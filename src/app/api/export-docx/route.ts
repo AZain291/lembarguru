@@ -135,10 +135,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const doc = new Document({ sections: [{ children }] })
-    const buffer = await Packer.toBuffer(doc)
+const buffer = await Packer.toBuffer(doc)
+const uint8Array = new Uint8Array(buffer)
 
-    return new NextResponse(buffer, {
+return new NextResponse(uint8Array, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'Content-Disposition': `attachment; filename="soal-${mapel.toLowerCase().replace(/\s+/g, '-')}.docx"`,
