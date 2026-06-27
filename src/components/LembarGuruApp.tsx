@@ -375,10 +375,10 @@ export default function LembarGuruApp() {
 
       {/* NAV */}
       <nav style={{ background:C.cardBg, borderBottom:`1px solid ${C.border}`, padding:"0 1.5rem", height:58, display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:100, boxShadow:C.shadow }}>
-        <div style={{ display:"flex", alignItems:"center", gap:9, fontWeight:800, fontSize:17, color:C.textPrimary }}>
-          <div style={{ width:30, height:30, background:"#2563eb", color:"#fff", borderRadius:7, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:900 }}>L</div>
+        <a href="/" style={{ display:"flex", alignItems:"center", gap:9, fontWeight:800, fontSize:17, color:C.textPrimary, textDecoration:"none" }}>
+          <img src="/favicon.ico" alt="LembarGuru" style={{ width:30, height:30, borderRadius:7 }} />
           LembarGuru
-        </div>
+        </a>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <button onClick={toggleTheme} title="Toggle tema" style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:8, width:34, height:34, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:15, color:C.textPrimary }}>
             {theme === "light" ? "🌙" : "☀️"}
