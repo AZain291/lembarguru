@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'LembarGuru — Generator Soal AI untuk Guru Indonesia',
+  title: 'LembarGuru — Generator Soal untuk Guru Indonesia',
   description: 'Buat soal berkualitas dalam hitungan detik. Sesuai Kurikulum Merdeka & K-13.',
 }
 
