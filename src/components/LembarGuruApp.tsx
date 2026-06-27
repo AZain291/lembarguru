@@ -41,10 +41,15 @@ interface UsageData {
   used: number;
   max: number | null;
   maxSoal: number;
+  sliderMax?: number;
   remaining: number | null;
   generatesToday?: number;
   generatesTotal?: number;
   tokensUsed?: number;
+  maxSoalPro?: number;
+  maxSoalGuru?: number;
+  maxGenFree?: number | null;
+  maxSoalFree?: number | null;
 }
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -60,13 +65,12 @@ const KELAS_LIST = ["1 SD","2 SD","3 SD","4 SD","5 SD","6 SD","7 SMP","8 SMP","9
 const FASE_CP = ["Fase A (Kelas 1-2)","Fase B (Kelas 3-4)","Fase C (Kelas 5-6)","Fase D (Kelas 7-9)","Fase E (Kelas 10)","Fase F (Kelas 11-12)"];
 const KURIKULUM = ["Kurikulum Merdeka","Kurikulum Nasional (K-13)"];
 const TYPES = [
-  { v: "pg_essay",      l: "Pilihan Ganda + Esai",        icon: "🎯", hasAnswer: false },
   { v: "pilihan_ganda", l: "Pilihan Ganda",    icon: "◉", hasAnswer: true  },
   { v: "essay",         l: "Esai / Uraian",    icon: "✏", hasAnswer: false },
   { v: "benar_salah",   l: "Benar atau Salah", icon: "⊙", hasAnswer: true  },
   { v: "isian",         l: "Isian Singkat",    icon: "▭", hasAnswer: false },
-  { v: "hots",          l: "HOTS (Pro)",       icon: "⚡", hasAnswer: false, pro: true },
-  { v: "campuran",      l: "Campuran",           icon: "🎲", pro: true },
+  { v: "pg_essay",      l: "PG + Essay",       icon: "🎯", hasAnswer: false, pro: true },
+  { v: "hots",          l: "HOTS",             icon: "⚡", hasAnswer: false, pro: true },
 ];
 const DIFFICULTY = ["Mudah","Sedang","Sulit","Campuran"];
 
@@ -162,11 +166,9 @@ export default function LembarGuruApp() {
   // Mixed mode
   const [mixedConfig, setMixedConfig] = useState<MixedConfig>({ pilihan_ganda:5, essay:3, benar_salah:0, isian:0, hots:0 });
 
-  // PG + Essay individual sliders
+  // Single mode jumlah soal
   const [pgCount, setPgCount] = useState(5);
   const [essayCount, setEssayCount] = useState(3);
-
-  // Single mode jumlah soal
   const [numQ, setNumQ] = useState(5);
 
   // UI state
@@ -211,21 +213,30 @@ export default function LembarGuruApp() {
     return () => listener.subscription.unsubscribe();
   }, [refreshUsage]);
 
+  // Clamp pg+essay slider values whenever maxQ changes (e.g. after login/logout)
+  const maxQ = usage.sliderMax ?? usage.maxSoal ?? TIER_DEFAULTS[usage.tier].maxQ;
+  useEffect(() => {
+    if (pgCount + essayCount > maxQ) {
+      const half = Math.max(1, Math.floor(maxQ / 2));
+      setPgCount(half);
+      setEssayCount(Math.max(1, maxQ - half));
+    }
+  }, [maxQ]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const C = THEMES[theme];
   const tier = usage.tier;
   const isPro = tier === "pro" || tier === "guru";
   const T = TIER_DEFAULTS[tier];
-  const maxQ = usage.maxSoal ?? T.maxQ;
   const remaining = usage.remaining;
   const used = usage.used;
   const maxGen = usage.max;
   const pct = maxGen ? Math.round((used / maxGen) * 100) : 0;
 
-  const isMixed   = qtype === "campuran";
+  const isMixed   = false;
   const isPgEssay  = qtype === "pg_essay";
-  const totalMixedQ   = isMixed   ? Object.values(mixedConfig).reduce((a, b) => a + b, 0) : 0;
+  const totalMixedQ   = 0;
   const totalPgEssayQ = isPgEssay ? pgCount + essayCount : 0;
-  const limitedNumQ   = isMixed ? totalMixedQ : isPgEssay ? totalPgEssayQ : Math.min(numQ, maxQ);
+  const limitedNumQ   = isPgEssay ? totalPgEssayQ : Math.min(numQ, maxQ);
 
   const showToast = (msg: string) => {
     if (toastRef.current) clearTimeout(toastRef.current);
@@ -236,7 +247,6 @@ export default function LembarGuruApp() {
   async function generateSoal() {
     if (remaining !== null && remaining <= 0) { setModal("limit"); return; }
     if (isMixed && totalMixedQ === 0) { setError("Isi minimal 1 soal di konfigurasi campuran."); return; }
-    if (isPgEssay && totalPgEssayQ === 0) { setError("Isi minimal 1 soal PG atau Essay."); return; }
 
     setLoading(true); setResult(null); setError(""); setShowAnswerKey(false);
 
@@ -247,9 +257,9 @@ export default function LembarGuruApp() {
         body: JSON.stringify({
           mapel, kelas, topik, difficulty, kurikulum,
           fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
-          tipe: (isMixed || isPgEssay) ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
+          tipe: isMixed ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
           jumlahSoal: limitedNumQ,
-          mixedConfig: isMixed ? mixedConfig : isPgEssay ? { pilihan_ganda: pgCount, essay: essayCount, benar_salah: 0, isian: 0, hots: 0 } : null,
+          mixedConfig: isMixed ? mixedConfig : null,
         }),
       });
 
@@ -259,18 +269,18 @@ export default function LembarGuruApp() {
       if (data.error === "max_soal_exceeded") { setError(`Maksimal ${data.maxSoal} soal untuk tier ${T.label}.`); return; }
       if (!data.success) throw new Error(data.error || "Gagal");
 
-      const qs = parseQuestions(data.hasil, (isMixed || isPgEssay) ? "pilihan_ganda" : qtype);
+      const qs = parseQuestions(data.hasil, isMixed ? "campuran" : qtype);
       if (qs.length === 0) throw new Error("Parse gagal — respons kosong");
 
       setResult({
         questions: qs, mapel, kelas, topik, kurikulum,
         fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
-        mixed: isMixed || isPgEssay,
-        mixedConfig: isMixed ? mixedConfig : isPgEssay ? { pilihan_ganda: pgCount, essay: essayCount, benar_salah: 0, isian: 0, hots: 0 } : undefined,
-        singleType: (isMixed || isPgEssay) ? undefined : TYPES.find(t => t.v === qtype)?.l,
+        mixed: isMixed,
+        mixedConfig: isMixed ? mixedConfig : undefined,
+        singleType: isMixed ? undefined : TYPES.find(t => t.v === qtype)?.l,
       });
 
-      setUsage(prev => ({ ...prev, used: data.used, tier: data.tier ?? prev.tier }));
+      setUsage(prev => ({ ...prev, used: data.used, tier: data.tier ?? prev.tier, remaining: data.remaining ?? prev.remaining, sliderMax: data.sliderMax ?? prev.sliderMax }));
     } catch (e: unknown) {
       setError((e instanceof Error ? e.message : null) || "Gagal generate soal. Coba lagi.");
     } finally {
@@ -376,14 +386,14 @@ export default function LembarGuruApp() {
           <span style={{ fontSize:11, fontWeight:700, padding:"3px 9px", borderRadius:20, background:C.pillBg, color:C.pillText }}>
             {tierInfo.label}
           </span>
-          {tier === "guest" && remaining !== null && remaining > 0 && (
-            <button onClick={() => router.push("/login")} style={{ background:"transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 14px", fontWeight:600, fontSize:13, cursor:"pointer", color:C.textPrimary }}>
-              Masuk
-            </button>
-          )}
           {tier === "guest" && (remaining === null || remaining <= 0) && (
             <button onClick={() => setModal("auth")} style={{ background:"#2563eb", color:"#fff", border:"none", borderRadius:8, padding:"7px 14px", fontWeight:600, fontSize:13, cursor:"pointer" }}>
               Daftar Gratis
+            </button>
+          )}
+          {tier === "guest" && remaining !== null && remaining > 0 && (
+            <button onClick={() => router.push("/login")} style={{ background:"transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 14px", fontWeight:600, fontSize:13, cursor:"pointer", color:C.textPrimary }}>
+              Masuk
             </button>
           )}
           {tier === "free" && (
@@ -396,7 +406,7 @@ export default function LembarGuruApp() {
               <button onClick={() => setView(view === "account" ? "generate" : "account")} style={{ background:view === "account" ? C.accentBg : "transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 12px", fontWeight:600, fontSize:13, cursor:"pointer", color:view === "account" ? C.accentText : C.textSecondary }}>
                 👤 Akun
               </button>
-              <button onClick={handleLogout} style={{ background:"transparent", border:"0.5px solid #ef4444", borderRadius:8, padding:"7px 12px", fontWeight:600, fontSize:13, cursor:"pointer", color:"#ef4444" }}>
+              <button onClick={handleLogout} style={{ background:"transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 12px", fontWeight:600, fontSize:13, cursor:"pointer", color:"#ef4444" }}>
                 Keluar
               </button>
             </>
@@ -513,8 +523,8 @@ export default function LembarGuruApp() {
             {!isPro && maxGen && (
               <div style={{ maxWidth:300, margin:"0 auto", background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textSecondary, marginBottom:6 }}>
-                  <span>Sisa: <strong style={{ color:C.textPrimary }}>{remaining}×</strong></span>
-                  <span>{used}/{maxGen} terpakai</span>
+                  <span>Soal hari ini</span>
+                  <span><strong style={{ color: remaining === 0 ? "#ef4444" : C.textPrimary }}>{remaining}</strong>/{maxGen} sisa</span>
                 </div>
                 <div style={{ height:5, background:C.track, borderRadius:3, overflow:"hidden" }}>
                   <div style={{ height:"100%", borderRadius:3, width:`${Math.min(pct, 100)}%`, background:pct >= 80 ? "#ef4444" : pct >= 50 ? "#f59e0b" : "#10b981", transition:"width .4s" }} />
@@ -581,91 +591,54 @@ export default function LembarGuruApp() {
               <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:".07em", color:C.textMuted, marginBottom:8 }}>Tipe Soal</div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:7, marginBottom:14 }}>
                 {TYPES.map(t => {
-                  const locked = t.pro && !isPro;
+                  const isProType = t.pro === true;
                   const isSelected = qtype === t.v;
+                  const canSelect = !isProType || isPro;
                   return (
-                    <button key={t.v} onClick={() => { if (locked) { setModal("upgrade"); return; } setQtype(t.v); }} style={{
-                      border:isSelected ? `1.5px solid ${C.accent}` : `1.5px solid ${C.inputBorder}`,
-                      background:isSelected ? C.accentBg : C.inputBg, borderRadius:8, padding:"9px 10px",
-                      cursor:"pointer", fontSize:12, fontWeight:600, color:isSelected ? C.accentText : C.textPrimary,
-                      textAlign:"left", display:"flex", alignItems:"center", gap:6, opacity:locked ? 0.6 : 1,
-                    }}>
-                      <span>{t.icon}</span>{t.l}
-                      {locked && <span style={{ fontSize:10, background:"#fde68a", color:"#92400e", padding:"1px 5px", borderRadius:3, marginLeft:"auto", fontWeight:700 }}>PRO</span>}
+                    <button
+                      key={t.v}
+                      onClick={() => setQtype(t.v)}
+                      style={{
+                        border: isSelected ? `1.5px solid ${C.accent}` : isProType && !isPro ? `1.5px dashed #d97706` : `1.5px solid ${C.inputBorder}`,
+                        background: isSelected ? C.accentBg : isProType && !isPro ? "rgba(217,119,6,0.06)" : C.inputBg,
+                        borderRadius:8, padding:"9px 10px",
+                        cursor:"pointer", fontSize:12, fontWeight:600,
+                        color: isSelected ? C.accentText : isProType && !isPro ? "#d97706" : C.textPrimary,
+                        textAlign:"left", display:"flex", alignItems:"center", gap:6,
+                        position:"relative" as const,
+                      }}
+                    >
+                      <span>{t.icon}</span>
+                      <span>{t.l}</span>
+                      {isProType && !isPro && (
+                        <span style={{ fontSize:9, background:"#fde68a", color:"#92400e", padding:"1px 5px", borderRadius:3, marginLeft:"auto", fontWeight:700 }}>PRO</span>
+                      )}
                     </button>
                   );
                 })}
               </div>
 
-              {/* ── MODE PG + ESSAY: dual slider ── */}
-              {isPgEssay && (
-                <div style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:"14px", marginBottom:14 }}>
-                  <div style={{ fontSize:12, fontWeight:700, color:C.textSecondary, marginBottom:14 }}>🎯 Jumlah Soal per Tipe</div>
-                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                    {/* Slider PG */}
-                    <div>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                        <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary }}>◉ Pilihan Ganda</label>
-                        <span style={{ fontSize:13, fontWeight:800, color:C.accent }}>{pgCount} soal</span>
-                      </div>
-                      <input type="range" min={0} max={maxQ} value={pgCount}
-                        onChange={e => setPgCount(+e.target.value)}
-                        style={{ width:"100%", accentColor:C.accent }} />
+              {/* Preview Pro banner - muncul saat tipe Pro dipilih tapi user bukan Pro */}
+              {TYPES.find(t => t.v === qtype)?.pro && !isPro && (
+                <div style={{ background:"rgba(217,119,6,0.08)", border:"1px solid rgba(217,119,6,0.3)", borderRadius:10, padding:"12px 14px", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#d97706", marginBottom:3 }}>
+                      ⚡ Fitur {TYPES.find(t => t.v === qtype)?.l} — Khusus Pro
                     </div>
-                    {/* Slider Essay */}
-                    <div>
-                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
-                        <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary }}>✏ Esai / Uraian</label>
-                        <span style={{ fontSize:13, fontWeight:800, color:C.accent }}>{essayCount} soal</span>
-                      </div>
-                      <input type="range" min={0} max={maxQ} value={essayCount}
-                        onChange={e => setEssayCount(+e.target.value)}
-                        style={{ width:"100%", accentColor:C.accent }} />
+                    <div style={{ fontSize:12, color:C.textSecondary }}>
+                      {qtype === "pg_essay" ? "Generate soal Pilihan Ganda dan Esai sekaligus dalam satu sesi." : "Soal Higher Order Thinking Skills untuk melatih kemampuan analisis dan evaluasi siswa."}
                     </div>
                   </div>
-                  <div style={{ fontSize:12, color:C.textSecondary, marginTop:10, paddingTop:10, borderTop:`1px dashed ${C.inputBorder}` }}>
-                    Total: <strong style={{ color:C.accent }}>{totalPgEssayQ}</strong> soal
-                    {totalPgEssayQ > maxQ && <span style={{ color:"#ef4444", marginLeft:8 }}>⚠ Melebihi batas {maxQ}</span>}
-                  </div>
+                  <button
+                    onClick={() => setModal("upgrade")}
+                    style={{ background:"#d97706", color:"#fff", border:"none", borderRadius:8, padding:"8px 16px", fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap" as const, flexShrink:0 }}
+                  >
+                    Upgrade
+                  </button>
                 </div>
               )}
 
-              {/* ── MODE PG SAJA: single slider dengan label khusus ── */}
-              {qtype === "pilihan_ganda" && (
-                <div style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:"14px", marginBottom:14 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary }}>◉ Jumlah Soal Pilihan Ganda</label>
-                    <span style={{ fontSize:13, fontWeight:800, color:C.accent }}>{limitedNumQ} soal</span>
-                  </div>
-                  <input type="range" min={1} max={maxQ} value={limitedNumQ} onChange={e => setNumQ(+e.target.value)} style={{ width:"100%", accentColor:C.accent }} />
-                  <div style={{ fontSize:11, color:C.textMuted, marginTop:4 }}>Maks. {maxQ} soal untuk tier {tierInfo.label}</div>
-                </div>
-              )}
-
-              {/* ── MODE ESSAY SAJA: single slider dengan label khusus ── */}
-              {qtype === "essay" && (
-                <div style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:"14px", marginBottom:14 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                    <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary }}>✏ Jumlah Soal Esai / Uraian</label>
-                    <span style={{ fontSize:13, fontWeight:800, color:C.accent }}>{limitedNumQ} soal</span>
-                  </div>
-                  <input type="range" min={1} max={maxQ} value={limitedNumQ} onChange={e => setNumQ(+e.target.value)} style={{ width:"100%", accentColor:C.accent }} />
-                  <div style={{ fontSize:11, color:C.textMuted, marginTop:4 }}>Maks. {maxQ} soal untuk tier {tierInfo.label}</div>
-                </div>
-              )}
-
-              {/* ── MODE LAINNYA (benar_salah, isian, hots): slider biasa ── */}
-              {!isMixed && !isPgEssay && qtype !== "pilihan_ganda" && qtype !== "essay" && (
-                <div style={{ marginBottom:14 }}>
-                  <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
-                    Jumlah Soal — <span style={{ color:C.accent, fontWeight:800 }}>{limitedNumQ}</span>
-                    <span style={{ fontWeight:400, color:C.textMuted }}> (maks. {maxQ})</span>
-                  </label>
-                  <input type="range" min={1} max={maxQ} value={limitedNumQ} onChange={e => setNumQ(+e.target.value)} style={{ width:"100%", accentColor:C.accent }} />
-                </div>
-              )}
-
-              {/* ── MODE CAMPURAN: number inputs ── */}
+              {/* Mixed config */}
               {isMixed && (
                 <div style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:"14px", marginBottom:14 }}>
                   <div style={{ fontSize:12, fontWeight:700, color:C.textSecondary, marginBottom:10 }}>🎲 Konfigurasi Soal Campuran</div>
@@ -696,20 +669,84 @@ export default function LembarGuruApp() {
                 </div>
               )}
 
+              {/* Jumlah soal (single mode — non PG+Essay) */}
+              {!isMixed && !isPgEssay && (
+                <div style={{ marginBottom:14 }}>
+                  <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+                    Jumlah Soal — <span style={{ color:C.accent, fontWeight:800 }}>{limitedNumQ}</span>
+                      <span style={{ fontWeight:400, color:C.textMuted }}> (maks. {maxQ}</span>
+                      <span style={{ fontWeight:400, fontSize:16, lineHeight:1, color:"#f59e0b" }}> • </span>
+                      <span style={{ fontWeight:"bold", color:"#f59e0b"  }}>Pro: {usage.maxSoalPro ?? TIER_DEFAULTS.pro.maxQ}</span>
+                      <span style={{ fontWeight:400, fontSize:16, lineHeight:1, color:"#f59e0b" }}> • </span>
+                      <span style={{ fontWeight:"bold", color:"#f59e0b"  }}>Guru: {usage.maxSoalGuru ?? TIER_DEFAULTS.guru.maxQ}</span>
+                      <span style={{ fontWeight:400, color:C.textMuted }}>)</span>
+                  </label>
+                  <input type="range" min={1} max={maxQ} value={limitedNumQ} onChange={e => setNumQ(+e.target.value)} style={{ width:"100%", accentColor:C.accent }} />
+                </div>
+              )}
+
+              {/* Jumlah soal PG + Essay (tampil untuk semua tier saat tipe pg_essay dipilih) */}
+              {!isMixed && isPgEssay && (
+                <div style={{ marginBottom:14, display:"flex", flexDirection:"column", gap:10 }}>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+                      Jumlah Soal Pilihan Ganda — <span style={{ color:C.accent, fontWeight:800 }}>{pgCount}</span>
+                    </label>
+                    <input
+                      type="range" min={1} max={Math.max(1, maxQ - essayCount)}
+                      value={pgCount}
+                      onChange={e => setPgCount(+e.target.value)}
+                      style={{ width:"100%", accentColor:C.accent }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+                      Jumlah Soal Esai — <span style={{ color:C.accent, fontWeight:800 }}>{essayCount}</span>
+                    </label>
+                    <input
+                      type="range" min={1} max={Math.max(1, maxQ - pgCount)}
+                      value={essayCount}
+                      onChange={e => setEssayCount(+e.target.value)}
+                      style={{ width:"100%", accentColor:C.accent }}
+                    />
+                  </div>
+                  <div style={{ fontSize:12, color: totalPgEssayQ > maxQ ? "#ef4444" : C.textSecondary }}>
+                    Total: <strong style={{ color: totalPgEssayQ > maxQ ? "#ef4444" : C.accent }}>{totalPgEssayQ}</strong> soal
+                    <span style={{ fontWeight:400, color:C.textMuted }}> (maks. {maxQ}</span>
+                    <span style={{ fontWeight:400, fontSize:16, lineHeight:1, color:"#f59e0b" }}> • </span>
+                    <span style={{ fontWeight:"bold", color:"#f59e0b" }}>Pro: {usage.maxSoalPro ?? TIER_DEFAULTS.pro.maxQ}</span>
+                    <span style={{ fontWeight:400, fontSize:16, lineHeight:1, color:"#f59e0b" }}> • </span>
+                    <span style={{ fontWeight:"bold", color:"#f59e0b" }}>Guru: {usage.maxSoalGuru ?? TIER_DEFAULTS.guru.maxQ}</span>
+                    <span style={{ fontWeight:400, color:C.textMuted }}>)</span>
+                  </div>
+                </div>
+              )}
+
               {remaining !== null && remaining <= 0 && (
                 <div style={{ background:C.warnBg, border:`1px solid ${C.warnBorder}`, color:C.warnText, borderRadius:9, padding:"12px 14px", fontSize:13, marginTop:12 }}>
-                  {tier === "guest" ? "Kuota tamu habis. Daftar gratis untuk 5×/hari." : "Kuota hari ini habis. Upgrade ke Pro untuk tanpa batas."}
+                  {tier === "guest"
+                    ? `Kuota tamu habis. Daftar gratis untuk ${usage.maxGenFree ?? TIER_DEFAULTS.free.maxGen}× generate/hari.`
+                    : `Kuota hari ini habis. Upgrade ke Pro untuk tanpa batas.`}
                 </div>
               )}
 
               <div style={{ display:"flex", justifyContent:"center", marginTop:22 }}>
-                <button onClick={generateSoal} disabled={loading || (remaining !== null && remaining <= 0) || (isMixed && totalMixedQ === 0) || (isPgEssay && totalPgEssayQ === 0)} style={{
-                  width:"100%", maxWidth:320, background:"#2563eb", color:"#fff",
-                  border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14,
-                  cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.6 : 1,
-                }}>
-                  {loading ? "Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
-                </button>
+                {TYPES.find(t => t.v === qtype)?.pro && !isPro ? (
+                  <button onClick={() => setModal("upgrade")} style={{
+                    width:"100%", maxWidth:320, background:"#d97706", color:"#fff",
+                    border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14, cursor:"pointer",
+                  }}>
+                    ⚡ Upgrade untuk Akses {TYPES.find(t => t.v === qtype)?.l}
+                  </button>
+                ) : (
+                  <button onClick={generateSoal} disabled={loading || (remaining !== null && remaining <= 0) || (isPgEssay && totalPgEssayQ === 0)} style={{
+                    width:"100%", maxWidth:320, background:"#2563eb", color:"#fff",
+                    border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14,
+                    cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.6 : 1,
+                  }}>
+                    {loading ? "Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -842,7 +879,9 @@ export default function LembarGuruApp() {
       {modal === "auth" && (
         <Modal onClose={() => setModal(null)} C={C}>
           <h2 style={{ fontSize:19, fontWeight:800, marginBottom:8, color:C.textPrimary }}>Daftar Akun Gratis</h2>
-          <p style={{ fontSize:13, color:C.textSecondary, marginBottom:20 }}>Dapatkan 5× generate/hari & maks. 10 soal per sesi.</p>
+          <p style={{ fontSize:13, color:C.textSecondary, marginBottom:20 }}>
+            Dapatkan {usage.maxGenFree ?? TIER_DEFAULTS.free.maxGen}× generate/hari & maks. {usage.maxSoalFree ?? TIER_DEFAULTS.free.maxQ} soal per sesi.
+          </p>
           <button onClick={() => { setModal(null); router.push("/login"); }} style={{ width:"100%", background:"#2563eb", color:"#fff", border:"none", borderRadius:10, padding:12, fontWeight:600, cursor:"pointer" }}>
             Daftar / Masuk
           </button>
@@ -857,7 +896,11 @@ export default function LembarGuruApp() {
         <Modal onClose={() => setModal(null)} C={C}>
           <h2 style={{ fontSize:19, fontWeight:800, marginBottom:8, color:C.textPrimary }}>Kuota Habis</h2>
           <p style={{ fontSize:13, color:C.textSecondary, marginBottom:20 }}>
-            {tier === "guest" ? "Daftar gratis untuk 5× generate/hari." : "Upgrade ke Pro untuk generate tanpa batas."}
+            {tier === "guest"
+              ? `Kuota coba gratis (${usage.max ?? 3}×) sudah habis. Daftar akun gratis untuk ${usage.maxGenFree ?? TIER_DEFAULTS.free.maxGen}× generate/hari & maks. ${usage.maxSoalFree ?? TIER_DEFAULTS.free.maxQ} soal per sesi.`
+              : tier === "free"
+              ? `Kuota harian (${usage.max ?? TIER_DEFAULTS.free.maxGen}×) sudah habis. Upgrade ke Pro untuk generate tanpa batas.`
+              : "Kuota hari ini telah habis."}
           </p>
           <button onClick={() => setModal(tier === "guest" ? "auth" : "upgrade")} style={{ width:"100%", background:"#2563eb", color:"#fff", border:"none", borderRadius:10, padding:12, fontWeight:600, cursor:"pointer" }}>
             {tier === "guest" ? "Daftar Gratis" : "Upgrade ke Pro"}

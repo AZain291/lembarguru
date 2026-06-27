@@ -15,8 +15,7 @@ interface MixedConfig {
 
 function buildPrompt(params: {
   mapel: string, kelas: string, topik: string | null, difficulty: string,
-  kurikulum: string, fase: string | null, tipe: string,
-  jumlahSoal: number, mixedConfig: MixedConfig | null,
+  kurikulum: string, fase: string | null, tipe: string, jumlahSoal: number, mixedConfig: MixedConfig | null,
 }): string {
   const { mapel, kelas, topik, difficulty, kurikulum, fase, tipe, jumlahSoal, mixedConfig } = params
 
@@ -28,10 +27,9 @@ function buildPrompt(params: {
 Mata Pelajaran: ${mapel}
 Kelas: ${kelas}
 Topik: ${topik || '(umum sesuai kelas)'}
-Kurikulum: ${kurikulum} — ${kurikulumNote}
+Kurikulum: ${kurikulum} – ${kurikulumNote}
 Tingkat kesulitan: ${difficulty || 'Campuran'}`
 
-  // Format rules per tipe
   const pgFormat = `
 Untuk PILIHAN GANDA:
 1. [teks soal]
@@ -83,7 +81,7 @@ Buat soal campuran dengan rincian berikut:
 ${parts.join(', ')}
 ${baseInfo}
 
-PENTING — Format output wajib diikuti:
+PENTING – Format output wajib diikuti:
 - Jangan gunakan markdown (tidak ada **, #, --)
 - Setiap tipe soal diawali dengan heading: # [NAMA TIPE] (contoh: # PILIHAN GANDA)
 - Penomoran ulang dari 1 untuk setiap tipe
@@ -97,7 +95,6 @@ PENTING — Format output wajib diikuti:
     return prompt
   }
 
-  // Single type
   const typeFormatMap: Record<string, string> = {
     'Pilihan Ganda': pgFormat,
     'Esai / Uraian': essayFormat,
@@ -147,7 +144,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
     }
 
-    // Validasi jumlah soal
     const totalSoal = tipe === 'campuran' && mixedConfig
       ? Object.values(mixedConfig as Record<string, number>).reduce((a, b) => a + b, 0)
       : Number(jumlahSoal)
@@ -156,6 +152,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'max_soal_exceeded', maxSoal: limit.maxSoal, tier: identity.type },
         { status: 400 }
+      )
+    }
+
+    // Cek apakah sisa kuota soal hari ini cukup
+    if (quota.max !== null && (quota.used + totalSoal) > quota.max) {
+      return NextResponse.json(
+        { error: 'quota_exceeded', tier: identity.type, used: quota.used, max: quota.max },
+        { status: 403 }
       )
     }
 
@@ -173,20 +177,34 @@ export async function POST(request: NextRequest) {
     const hasil = message.content[0].type === 'text' ? message.content[0].text : ''
     const totalTokens = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
 
-    await logUsage(identity, { action: 'generate', tokensUsed: totalTokens, status: 'success' })
+    // Simpan jumlah soal yang digenerate
+    await logUsage(identity, {
+      action: 'generate',
+      tokensUsed: totalTokens,
+      questionsCount: totalSoal,
+      status: 'success',
+    })
+
     const updatedQuota = await checkQuota(identity)
+    const updatedLimit = limits[identity.type]
+    const remainingQuota = updatedQuota.max === null ? null : Math.max(0, updatedQuota.max - updatedQuota.used)
+    const sliderMax = remainingQuota === null
+      ? updatedLimit.maxSoal
+      : Math.min(updatedLimit.maxSoal, remainingQuota)
 
     return NextResponse.json({
       hasil, success: true,
       tier: identity.type,
       used: updatedQuota.used,
       max: updatedQuota.max,
+      remaining: remainingQuota,
+      sliderMax,
     })
 
   } catch (error) {
     console.error('Generate error:', error)
     if (identity) {
-      try { await logUsage(identity, { action: 'generate_failed', status: 'error' }) } catch {}
+      try { await logUsage(identity, { action: 'generate_failed', questionsCount: 0, status: 'error' }) } catch {}
     }
     return NextResponse.json({ error: 'Gagal generate soal' }, { status: 500 })
   }

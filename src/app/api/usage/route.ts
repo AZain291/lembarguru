@@ -11,7 +11,12 @@ export async function GET() {
     const limits = await getDynamicTierLimits()
     const limit = limits[identity.type]
 
-    // Statistik tambahan untuk halaman akun
+    // Sisa soal yang bisa digenerate hari ini (dibatasi juga oleh maxSoal per sesi)
+    const remainingQuota = quota.max === null ? null : Math.max(0, quota.max - quota.used)
+    const sliderMax = remainingQuota === null
+      ? limit.maxSoal
+      : Math.min(limit.maxSoal, remainingQuota)
+
     let generatesToday = 0
     let generatesTotal = 0
     let tokensUsed = 0
@@ -40,10 +45,15 @@ export async function GET() {
     return NextResponse.json({
       tier: identity.type,
       email: identity.email,
-      used: quota.used,
-      max: quota.max,
-      maxSoal: limit.maxSoal,
-      remaining: quota.max === null ? null : Math.max(0, quota.max - quota.used),
+      used: quota.used,           // total soal hari ini
+      max: quota.max,             // max soal per hari
+      maxSoal: limit.maxSoal,     // max soal per sesi
+      sliderMax,                  // min(maxSoal, sisa kuota) — batas slider
+      maxSoalPro: limits.pro?.maxSoal ?? null,
+      maxSoalGuru: limits.guru?.maxSoal ?? null,
+      maxGenFree: limits.free?.maxPerPeriod ?? null,
+      maxSoalFree: limits.free?.maxSoal ?? null,
+      remaining: remainingQuota,
       generatesToday,
       generatesTotal,
       tokensUsed,
