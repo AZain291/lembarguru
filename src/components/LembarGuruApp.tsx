@@ -913,6 +913,33 @@ export default function LembarGuruApp() {
           ✓ {toast}
         </div>
       )}
+
+      {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
+      <footer style={{ borderTop:`1px solid ${C.border}`, background:C.cardBg, padding:"2rem 1.5rem", marginTop:"2rem" }}>
+        <div style={{ maxWidth:860, margin:"0 auto", display:"flex", flexDirection:"column", alignItems:"center", gap:16 }}>
+          {/* Logo */}
+          <a href="/" style={{ display:"flex", alignItems:"center", gap:8, textDecoration:"none" }}>
+            <img src="/favicon.ico" alt="LembarGuru" style={{ width:24, height:24, borderRadius:5 }} />
+            <span style={{ fontWeight:800, fontSize:15, color:C.textPrimary }}>LembarGuru</span>
+          </a>
+          {/* Links */}
+          <div style={{ display:"flex", gap:24, flexWrap:"wrap", justifyContent:"center" }}>
+            {[
+              { href:"/about",   label:"Tentang Kami" },
+              { href:"/contact", label:"Kontak" },
+              { href:"/terms",   label:"Syarat & Ketentuan" },
+            ].map(link => (
+              <a key={link.href} href={link.href} style={{ fontSize:13, color:C.textSecondary, textDecoration:"none" }}>
+                {link.label}
+              </a>
+            ))}
+          </div>
+          {/* Copyright */}
+          <p style={{ fontSize:12, color:C.textMuted, textAlign:"center", margin:0 }}>
+            © {new Date().getFullYear()} LembarGuru. Hak cipta dilindungi undang-undang.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
