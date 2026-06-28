@@ -1,3 +1,18 @@
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Tentang LembarGuru — Asisten Soal untuk Guru Indonesia',
+  description: 'LembarGuru hadir untuk membantu guru Indonesia membuat soal berkualitas sesuai Kurikulum Merdeka dan K-13 dalam hitungan detik. Kenali misi dan nilai kami.',
+  alternates: {
+    canonical: '/about',
+  },
+  openGraph: {
+    title: 'Tentang LembarGuru — Asisten Soal untuk Guru Indonesia',
+    description: 'Kenali misi LembarGuru dalam membantu guru Indonesia membuat soal berkualitas lebih cepat.',
+    url: 'https://lembarguru.com/about',
+  },
+}
+
 export default function AboutPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "system-ui, sans-serif", padding: "0 0 4rem" }}>
@@ -73,3 +88,4 @@ export default function AboutPage() {
     </main>
   )
 }
+

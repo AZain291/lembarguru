@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="1632000.1"
+   viewBox="0 0 1632000.1 604800"
+   role="img"
+   version="1.1"
+   id="svg25"
+   height="604800"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <title
+     id="title1">LembarGuru OG Image</title>
+  <desc
+     id="desc1">Open Graph image untuk LembarGuru - Generator Soal AI untuk Guru Indonesia</desc>
+  <defs
+     id="defs1">
+    <pattern
+       xlink:href="#grid"
+       id="pattern25"
+       patternTransform="matrix(1.0432664,0,0,1.0432664,0.27041494,-0.36506043)" />
+    <pattern
+       id="grid"
+       width="40"
+       height="40"
+       patternUnits="userSpaceOnUse">
+      <path
+         d="M 40 0 L 0 0 0 40"
+         fill="none"
+         stroke="#ffffff"
+         stroke-width="0.3"
+         opacity="0.08"
+         id="path1" />
+    </pattern>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath30">
+      <rect
+         style="fill:#636363;fill-opacity:1;stroke:#000000;stroke-width:0.566929;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:1;paint-order:markers fill stroke"
+         id="rect30"
+         width="1200"
+         height="630"
+         x="48.582962"
+         y="25.048801"
+         ry="15"
+         rx="15" />
+    </clipPath>
+  </defs>
+  <g
+     id="g27"
+     clip-path="url(#clipPath30)"
+     transform="translate(-66072.829,-24046.85)">
+    <rect
+       width="1251.9197"
+       height="657.25781"
+       fill="#1e3a8a"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#1e3a8a;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect1"
+       x="0.2704148"
+       y="-0.3650603" />
+    <rect
+       width="1251.9197"
+       height="657.25781"
+       fill="url(#grid)"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:url(#pattern25);stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect2"
+       x="0.2704148"
+       y="-0.3650603" />
+    <circle
+       cx="1095.7002"
+       cy="-62.961044"
+       r="312.97992"
+       fill="#2563eb"
+       opacity="0.5"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.5;fill:#2563eb;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="circle2" />
+    <circle
+       cx="1147.8635"
+       cy="83.096252"
+       r="187.78795"
+       fill="#3b82f6"
+       opacity="0.3"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.3;fill:#3b82f6;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="circle3" />
+    <circle
+       cx="83.731728"
+       cy="729.92139"
+       r="260.81659"
+       fill="#1d4ed8"
+       opacity="0.4"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.4;fill:#1d4ed8;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="circle4" />
+    <rect
+       x="83.731728"
+       y="83.096252"
+       width="730.2865"
+       height="490.33521"
+       rx="20"
+       fill="#ffffff"
+       opacity="0.06"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.06;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect4"
+       ry="20" />
+    <rect
+       x="125.46239"
+       y="135.25957"
+       width="58.42292"
+       height="58.42292"
+       rx="12"
+       fill="#2563eb"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#2563eb;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect5"
+       ry="12" />
+    <text
+       x="154.67384"
+       y="174.90369"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="28"
+       font-weight="700"
+       fill="#ffffff"
+       text-anchor="middle"
+       style="color:#0b0b0b;font-weight:700;font-size:29.2115px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:middle;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text5">L</text>
+    <text
+       x="200.57756"
+       y="174.90369"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="28"
+       font-weight="700"
+       fill="#ffffff"
+       style="color:#0b0b0b;font-weight:700;font-size:29.2115px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text6">LembarGuru</text>
+    <rect
+       x="125.46239"
+       y="218.72089"
+       width="500.76788"
+       height="2.0865328"
+       rx="1"
+       fill="#ffffff"
+       opacity="0.15"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.15;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect6"
+       ry="1" />
+    <text
+       x="125.46239"
+       y="289.66302"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="52"
+       font-weight="700"
+       fill="#ffffff"
+       style="color:#0b0b0b;font-weight:700;font-size:54.2499px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text7">Buat Soal Ujian</text>
+    <text
+       x="125.46239"
+       y="354.34552"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="52"
+       font-weight="700"
+       fill="#60a5fa"
+       style="color:#0b0b0b;font-weight:700;font-size:54.2499px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#60a5fa;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text8">Otomatis dengan AI</text>
+    <text
+       x="125.46239"
+       y="414.85498"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="22"
+       fill="#bfdbfe"
+       opacity="0.9"
+       style="color:#0b0b0b;font-weight:400;font-size:22.9519px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.9;fill:#bfdbfe;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text9">Generator soal untuk guru SD, SMP &amp; SMA Indonesia</text>
+    <rect
+       x="125.46239"
+       y="446.15298"
+       width="417.30655"
+       height="2.0865328"
+       rx="1"
+       fill="#ffffff"
+       opacity="0.12"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.12;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect9"
+       ry="1" />
+    <rect
+       x="125.46239"
+       y="469.10483"
+       width="219.08594"
+       height="37.55759"
+       rx="18"
+       fill="#2563eb"
+       opacity="0.7"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.7;fill:#2563eb;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect10"
+       ry="18" />
+    <text
+       x="235.00536"
+       y="494.14322"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="15"
+       fill="#ffffff"
+       text-anchor="middle"
+       style="color:#0b0b0b;font-weight:400;font-size:15.649px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:middle;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text10">Kurikulum Merdeka</text>
+    <rect
+       x="359.15405"
+       y="469.10483"
+       width="104.32664"
+       height="37.55759"
+       rx="18"
+       fill="#1d4ed8"
+       opacity="0.7"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.7;fill:#1d4ed8;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect11"
+       ry="18" />
+    <text
+       x="411.31738"
+       y="494.14322"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="15"
+       fill="#ffffff"
+       text-anchor="middle"
+       style="color:#0b0b0b;font-weight:400;font-size:15.649px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:middle;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text11">K-13</text>
+    <rect
+       x="478.08643"
+       y="469.10483"
+       width="93.893974"
+       height="37.55759"
+       rx="18"
+       fill="#1e40af"
+       opacity="0.7"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.7;fill:#1e40af;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect12"
+       ry="18" />
+    <text
+       x="525.03339"
+       y="494.14322"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="15"
+       fill="#ffffff"
+       text-anchor="middle"
+       style="color:#0b0b0b;font-weight:400;font-size:15.649px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:middle;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text12">HOTS</text>
+    <rect
+       x="814.01819"
+       y="124.82691"
+       width="354.71057"
+       height="229.5186"
+       rx="14"
+       fill="#1d4ed8"
+       opacity="0.5"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.5;fill:#1d4ed8;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect13"
+       ry="14" />
+    <rect
+       x="834.88348"
+       y="156.12489"
+       width="354.71057"
+       height="229.5186"
+       rx="14"
+       fill="#2563eb"
+       opacity="0.7"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.7;fill:#2563eb;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect14"
+       ry="14" />
+    <rect
+       x="855.74884"
+       y="187.42288"
+       width="354.71057"
+       height="271.24927"
+       rx="14"
+       fill="#ffffff"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#ffffff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect15"
+       ry="14" />
+    <text
+       x="884.96027"
+       y="231.24008"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="13"
+       font-weight="600"
+       fill="#1e3a8a"
+       style="color:#0b0b0b;font-weight:600;font-size:13.5625px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#1e3a8a;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text15">Soal Pilihan Ganda — IPA Kelas 5 SD</text>
+    <rect
+       x="884.96027"
+       y="241.67274"
+       width="292.11459"
+       height="1.5648996"
+       fill="#e2e8f0"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#e2e8f0;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect16" />
+    <text
+       x="884.96027"
+       y="268.79767"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="12"
+       fill="#374151"
+       style="color:#0b0b0b;font-weight:400;font-size:12.5192px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#374151;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text16">1. Proses fotosintesis terjadi di dalam...</text>
+    <rect
+       x="884.96027"
+       y="281.31686"
+       width="187.78795"
+       height="10.432664"
+       rx="4"
+       fill="#eff6ff"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#eff6ff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect17"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="291.74954"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#2563eb"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#2563eb;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text17">a. Mitokondria</text>
+    <rect
+       x="884.96027"
+       y="298.00916"
+       width="166.92262"
+       height="10.432664"
+       rx="4"
+       fill="#f0fdf4"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#f0fdf4;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect18"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="308.4418"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#16a34a"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#16a34a;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text18">b. Kloroplas ✓</text>
+    <rect
+       x="884.96027"
+       y="314.70142"
+       width="156.48996"
+       height="10.432664"
+       rx="4"
+       fill="#eff6ff"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#eff6ff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect19"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="325.13406"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#6b7280"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#6b7280;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text19">c. Ribosom</text>
+    <rect
+       x="884.96027"
+       y="331.39368"
+       width="161.7063"
+       height="10.432664"
+       rx="4"
+       fill="#eff6ff"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#eff6ff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect20"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="341.82632"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#6b7280"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#6b7280;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text20">d. Vakuola</text>
+    <rect
+       x="884.96027"
+       y="358.51859"
+       width="292.11459"
+       height="1.0432664"
+       fill="#e2e8f0"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#e2e8f0;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect21" />
+    <text
+       x="884.96027"
+       y="377.29739"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="12"
+       fill="#374151"
+       style="color:#0b0b0b;font-weight:400;font-size:12.5192px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#374151;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text21">2. Organel yang menghasilkan energi...</text>
+    <rect
+       x="884.96027"
+       y="389.81659"
+       width="182.57162"
+       height="10.432664"
+       rx="4"
+       fill="#eff6ff"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#eff6ff;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect22"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="400.24924"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#6b7280"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#6b7280;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text22">a. Kloroplas</text>
+    <rect
+       x="884.96027"
+       y="406.50885"
+       width="193.00429"
+       height="10.432664"
+       rx="4"
+       fill="#f0fdf4"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#f0fdf4;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect23"
+       ry="4" />
+    <text
+       x="895.39294"
+       y="416.9415"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="10"
+       fill="#16a34a"
+       style="color:#0b0b0b;font-weight:400;font-size:10.4327px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#16a34a;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text23">b. Mitokondria ✓</text>
+    <rect
+       x="0.2704148"
+       y="604.72943"
+       width="1251.9197"
+       height="52.163319"
+       fill="#1e40af"
+       opacity="0.6"
+       style="color:#0b0b0b;font-weight:400;font-size:16px;font-family:'Anthropic Sans', '-apple-system', BlinkMacSystemFont, 'Segoe UI', sans-serif;dominant-baseline:auto;text-anchor:start;opacity:0.6;fill:#1e40af;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="rect24" />
+    <text
+       x="125.46239"
+       y="638.11395"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="16"
+       fill="#bfdbfe"
+       style="color:#0b0b0b;font-weight:400;font-size:16.6923px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:start;opacity:1;fill:#bfdbfe;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text24">lembarguru.com</text>
+    <text
+       x="1126.9982"
+       y="638.11395"
+       font-family="'Segoe UI', system-ui, sans-serif"
+       font-size="16"
+       fill="#bfdbfe"
+       text-anchor="middle"
+       style="color:#0b0b0b;font-weight:400;font-size:16.6923px;font-family:'Segoe UI', system-ui, sans-serif;dominant-baseline:auto;text-anchor:middle;opacity:1;fill:#bfdbfe;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter"
+       id="text25">Coba gratis sekarang →</text>
+  </g>
+</svg>

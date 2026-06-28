@@ -1,3 +1,18 @@
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Syarat & Ketentuan — LembarGuru',
+  description: 'Baca syarat dan ketentuan penggunaan layanan LembarGuru, termasuk kebijakan privasi, refund, dan hak kekayaan intelektual.',
+  alternates: {
+    canonical: '/terms',
+  },
+  openGraph: {
+    title: 'Syarat & Ketentuan — LembarGuru',
+    description: 'Syarat dan ketentuan penggunaan layanan LembarGuru.',
+    url: 'https://lembarguru.com/terms',
+  },
+}
+
 export default function TermsPage() {
   const lastUpdated = "27 Juni 2026"
 

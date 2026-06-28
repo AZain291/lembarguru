@@ -1,3 +1,18 @@
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Kontak LembarGuru — Hubungi Tim Kami',
+  description: 'Ada pertanyaan seputar LembarGuru? Hubungi kami via email atau WhatsApp. Tim kami siap membantu dalam 1×24 jam di hari kerja.',
+  alternates: {
+    canonical: '/contact',
+  },
+  openGraph: {
+    title: 'Kontak LembarGuru — Hubungi Tim Kami',
+    description: 'Hubungi tim LembarGuru untuk pertanyaan, laporan bug, atau feedback.',
+    url: 'https://lembarguru.com/contact',
+  },
+}
+
 export default function ContactPage() {
   return (
     <main style={{ minHeight: "100vh", background: "#f5f4f0", fontFamily: "system-ui, sans-serif", padding: "0 0 4rem" }}>
