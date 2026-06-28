@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
+    verification: {
+    google: 'google-site-verification=0wuqU3shNusJpq6eKK5hriQM3OtT4n6BvdcFiSN_EhQ', // isi dengan kode dari Search Console
+  },
   metadataBase: new URL('https://lembarguru.com'),
     alternates: {
     canonical: '/',
