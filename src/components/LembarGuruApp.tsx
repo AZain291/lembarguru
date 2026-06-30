@@ -50,6 +50,19 @@ interface UsageData {
   maxSoalGuru?: number;
   maxGenFree?: number | null;
   maxSoalFree?: number | null;
+  tierExpiresAt?: string | null;
+}
+
+interface PromoData {
+  id: string;
+  code: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  applies_to: string;
+  valid_until: string | null;
+  max_uses: number | null;
+  used_count: number;
+  active?: boolean;
 }
 
 // ── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -180,6 +193,10 @@ export default function LembarGuruApp() {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showAnswerKey, setShowAnswerKey] = useState(false);
+  const [activePromos, setActivePromos] = useState<PromoData[]>([]);
+  const [promoDismissed, setPromoDismissed] = useState(false);
+  const [expiryDismissed, setExpiryDismissed] = useState(false);
+  const [shareModal, setShareModal] = useState<PromoData | null>(null);
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
@@ -204,6 +221,31 @@ export default function LembarGuruApp() {
       const data = await res.json();
       setUsage(prev => ({ ...prev, ...data }));
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    function loadPromos() {
+      fetch("/api/public/promos", { cache: "no-store" })
+        .then(r => r.json())
+        .then(d => {
+          const now = new Date();
+          const valid = (d.promos ?? []).filter((p: PromoData) =>
+            p.active !== false &&
+            (!p.valid_until || new Date(p.valid_until) > now) &&
+            (!p.max_uses || (p.used_count ?? 0) < p.max_uses)
+          );
+          setActivePromos(valid);
+        })
+        .catch(() => {});
+    }
+
+    loadPromos();
+
+    function onVisible() {
+      if (document.visibilityState === "visible") loadPromos();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   useEffect(() => {
@@ -534,6 +576,65 @@ export default function LembarGuruApp() {
           </div>
 
           <div style={{ maxWidth:860, margin:"0 auto", padding:"0 1.5rem 4rem" }}>
+
+            {/* ── SUBSCRIPTION EXPIRY REMINDER BANNER ── */}
+            {isPro && usage.tierExpiresAt && !expiryDismissed && (() => {
+              const expiresAt = new Date(usage.tierExpiresAt!);
+              const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000);
+              if (daysLeft > 7 || daysLeft < 0) return null;
+              const urgent = daysLeft <= 3;
+              return (
+                <div style={{ background: urgent ? (theme==="light" ? "#fef2f2" : "#2a1414") : (theme==="light" ? "#eff6ff" : "#14202a"), border:`1px solid ${urgent ? "#fca5a5" : "#93c5fd"}`, borderRadius:12, padding:"12px 16px", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+                    <div style={{ fontSize:18, flexShrink:0 }}>{urgent ? "⚠️" : "⏰"}</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>
+                        Langganan {tier === "pro" ? "Pro" : "Guru Lengkap"} akan berakhir
+                      </div>
+                      <div style={{ fontSize:12, color:C.textSecondary, marginTop:1 }}>
+                        {daysLeft === 0 ? "Berakhir hari ini" : `${daysLeft} hari lagi`} · {expiresAt.toLocaleDateString("id-ID", { day:"numeric", month:"long", year:"numeric" })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                    <button onClick={() => setModal("upgrade")} style={{ background: urgent ? "#ef4444" : "#2563eb", color:"#fff", border:"none", borderRadius:7, padding:"6px 12px", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                      Perpanjang →
+                    </button>
+                    <button onClick={() => setExpiryDismissed(true)} style={{ background:"none", border:"none", cursor:"pointer", color:C.textMuted, fontSize:18, lineHeight:1, padding:"0 2px" }} aria-label="Tutup">×</button>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── PROMO HERO BANNER ── */}
+            {!isPro && activePromos.length > 0 && !promoDismissed && (() => {
+              const p = activePromos[0];
+              const disc = p.discount_type === "percent" ? `${p.discount_value}% off` : `Diskon Rp ${p.discount_value.toLocaleString("id-ID")}`;
+              const deadline = p.valid_until ? new Date(p.valid_until).toLocaleDateString("id-ID", { day:"numeric", month:"short" }) : null;
+              return (
+                <div style={{ background: theme==="light" ? "#fffbeb" : "#2a2110", border:`1px solid ${C.warnBorder}`, borderRadius:12, padding:"12px 16px", marginBottom:14, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
+                    <div style={{ background:"#f59e0b", color:"#fff", fontSize:12, fontWeight:700, padding:"3px 9px", borderRadius:6, whiteSpace:"nowrap" as const, flexShrink:0 }}>{disc}</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:C.textPrimary }}>Promo spesial aktif!</div>
+                      <div style={{ fontSize:12, color:C.textSecondary, marginTop:1 }}>
+                        Kode <span style={{ fontFamily:"monospace", fontWeight:700, color:"#d97706" }}>{p.code}</span>
+                        {deadline && <> · Berlaku sampai {deadline}</>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                    <button onClick={() => setShareModal(p)} style={{ background:"none", border:`1px solid #f59e0b`, color:"#d97706", borderRadius:7, padding:"6px 12px", fontSize:12, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", gap:5 }}>
+                      📤 Share
+                    </button>
+                    <button onClick={() => setModal("upgrade")} style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:7, padding:"6px 12px", fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                      Upgrade →
+                    </button>
+                    <button onClick={() => setPromoDismissed(true)} style={{ background:"none", border:"none", cursor:"pointer", color:C.textMuted, fontSize:18, lineHeight:1, padding:"0 2px" }} aria-label="Tutup">×</button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* FORM CARD */}
             <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:14, padding:"1.5rem", marginBottom:"1.25rem" }}>
@@ -889,7 +990,7 @@ export default function LembarGuruApp() {
       )}
 
       {modal === "upgrade" && (
-        <UpgradeModal onClose={() => setModal(null)} C={C} tier={tier} />
+        <UpgradeModal onClose={() => setModal(null)} C={C} tier={tier} prefillPromo={activePromos[0] ?? null} />
       )}
 
       {modal === "limit" && (
@@ -912,6 +1013,16 @@ export default function LembarGuruApp() {
         <div style={{ position:"fixed", bottom:20, right:20, background:theme === "light" ? "#111827" : "#2563eb", color:"#fff", padding:"11px 16px", borderRadius:9, fontSize:13, fontWeight:600, zIndex:9999, animation:"fadeIn .2s ease" }}>
           ✓ {toast}
         </div>
+      )}
+
+      {/* ── SHARE PROMO MODAL ── */}
+      {shareModal && (
+        <SharePromoModal
+          promo={shareModal}
+          onClose={() => setShareModal(null)}
+          C={C}
+          theme={theme}
+        />
       )}
 
       {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
@@ -944,6 +1055,236 @@ export default function LembarGuruApp() {
   );
 }
 
+function SharePromoModal({
+  promo, onClose, C, theme
+}: {
+  promo: PromoData;
+  onClose: () => void;
+  C: typeof THEMES.light;
+  theme: "light" | "dark";
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [copied, setCopied] = useState(false);
+  const promoUrl = `https://lembarguru.com/?promo=${promo.code}`;
+  const disc = promo.discount_type === "percent"
+    ? `${promo.discount_value}% off`
+    : `Diskon Rp ${promo.discount_value.toLocaleString("id-ID")}`;
+  const exp = promo.valid_until
+    ? new Date(promo.valid_until).toLocaleDateString("id-ID", { day:"numeric", month:"long", year:"numeric" })
+    : null;
+
+  function drawCard(canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const W = 1080, H = 1080;
+    canvas.width = W; canvas.height = H;
+
+    // BG
+    ctx.fillStyle = "#1a1740";
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative circles
+    ctx.fillStyle = "rgba(245,158,11,0.06)";
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(W - 80, 80 + i * 60, 200 + i * 50, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Logo area
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "bold 36px sans-serif";
+    ctx.fillText("LembarGuru", 80, 100);
+
+    // Discount badge
+    ctx.fillStyle = "rgba(245,158,11,0.2)";
+    roundRectCanvas(ctx, 80, 130, 200, 56, 10);
+    ctx.fill();
+    ctx.fillStyle = "#f59e0b";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText(disc, 100, 167);
+
+    // Main headline
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 72px sans-serif";
+    ctx.fillText("Upgrade ke Pro", 80, 300);
+    ctx.fillStyle = "#d1cfe8";
+    ctx.font = "48px sans-serif";
+    ctx.fillText("harga lebih hemat!", 80, 370);
+
+    // Description
+    ctx.fillStyle = "#a5a3c0";
+    ctx.font = "28px sans-serif";
+    ctx.fillText("Generator soal AI untuk guru SD, SMP & SMA", 80, 440);
+    ctx.fillText("Kurikulum Merdeka & K-13 — tanpa batas soal", 80, 480);
+
+    // Promo box
+    ctx.fillStyle = "rgba(255,255,255,0.06)";
+    roundRectCanvas(ctx, 80, 540, W - 160, 120, 16);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(245,158,11,0.5)";
+    ctx.lineWidth = 2;
+    roundRectCanvas(ctx, 80, 540, W - 160, 120, 16);
+    ctx.stroke();
+
+    ctx.fillStyle = "#a5a3c0";
+    ctx.font = "24px sans-serif";
+    ctx.fillText("Gunakan kode promo:", 110, 582);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 52px monospace";
+    ctx.fillText(promo.code, 110, 640);
+
+    if (exp) {
+      ctx.fillStyle = "#a5a3c0";
+      ctx.font = "22px sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText("Berlaku sampai", W - 110, 582);
+      ctx.fillStyle = "#f59e0b";
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillText(exp, W - 110, 617);
+      ctx.textAlign = "left";
+    }
+
+    // URL
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "22px monospace";
+    ctx.fillText(promoUrl, 80, H - 60);
+
+    // Bottom bar
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillRect(80, H - 30, W - 160, 4);
+  }
+
+  function roundRectCanvas(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  useEffect(() => {
+    if (canvasRef.current) drawCard(canvasRef.current);
+  }, []);
+
+  function downloadCard() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = `promo-lembarguru-${promo.code}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(promoUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const shareText = `Promo LembarGuru ${disc}!\nGunakan kode *${promo.code}* saat upgrade.${exp ? ` Berlaku sampai ${exp}.` : ""}\n\nGenerator soal AI untuk guru Indonesia.\n${promoUrl}`;
+
+  const platforms = [
+    {
+      label: "WhatsApp",
+      color: "#25d366",
+      icon: "💬",
+      url: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: "X / Twitter",
+      color: "#000000",
+      icon: "𝕏",
+      url: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Promo LembarGuru ${disc}! Kode: ${promo.code}\nGenerator soal AI untuk guru Indonesia.\n${promoUrl}`)}`,
+    },
+    {
+      label: "Facebook",
+      color: "#1877f2",
+      icon: "f",
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(promoUrl)}&quote=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: "Telegram",
+      color: "#2aabee",
+      icon: "✈",
+      url: `https://t.me/share/url?url=${encodeURIComponent(promoUrl)}&text=${encodeURIComponent(shareText)}`,
+    },
+    {
+      label: "Threads",
+      color: "#000000",
+      icon: "@",
+      url: `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText)}`,
+    },
+  ];
+
+  return (
+    <div
+      onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:600, padding:"1rem" }}
+    >
+      <div style={{ background:C.cardBg, borderRadius:16, width:"100%", maxWidth:520, maxHeight:"90vh", overflowY:"auto", padding:"1.5rem", position:"relative", border:`1px solid ${C.border}` }}>
+        <button onClick={onClose} style={{ position:"absolute", top:14, right:14, background:"none", border:"none", cursor:"pointer", fontSize:20, color:C.textMuted }}>✕</button>
+
+        <h2 style={{ fontSize:17, fontWeight:800, marginBottom:4, color:C.textPrimary }}>📤 Share Promo</h2>
+        <p style={{ fontSize:12, color:C.textSecondary, marginBottom:16 }}>
+          Share promo <span style={{ fontFamily:"monospace", fontWeight:700, color:"#d97706" }}>{promo.code}</span> ke media sosial atau download share card-nya.
+        </p>
+
+        {/* Preview card */}
+        <canvas
+          ref={canvasRef}
+          style={{ width:"100%", borderRadius:10, marginBottom:14, display:"block" }}
+        />
+
+        {/* Platform buttons */}
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8, marginBottom:14 }}>
+          {platforms.map(pl => (
+            <a
+              key={pl.label}
+              href={pl.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, background:pl.color, color:"#fff", borderRadius:8, padding:"9px 10px", fontSize:12, fontWeight:700, textDecoration:"none", cursor:"pointer" }}
+            >
+              <span style={{ fontSize:15 }}>{pl.icon}</span>
+              {pl.label}
+            </a>
+          ))}
+          <button
+            onClick={downloadCard}
+            style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, background:"#7c3aed", color:"#fff", border:"none", borderRadius:8, padding:"9px 10px", fontSize:12, fontWeight:700, cursor:"pointer" }}
+          >
+            ⬇ Download
+          </button>
+        </div>
+
+        {/* Copy link */}
+        <div style={{ display:"flex", gap:8 }}>
+          <input
+            readOnly
+            value={promoUrl}
+            style={{ flex:1, fontSize:12, padding:"8px 10px", border:`1px solid ${C.inputBorder}`, borderRadius:8, background:C.inputBg, color:C.textSecondary, fontFamily:"monospace" }}
+          />
+          <button
+            onClick={copyLink}
+            style={{ fontSize:12, padding:"8px 14px", border:`1px solid ${copied ? "#10b981" : C.inputBorder}`, borderRadius:8, background: copied ? "#ecfdf5" : C.cardBg, color: copied ? "#059669" : C.textPrimary, cursor:"pointer", fontWeight:600, whiteSpace:"nowrap" as const }}
+          >
+            {copied ? "✓ Tersalin" : "Salin link"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ── SUB COMPONENTS ────────────────────────────────────────────────────────────
 function StatBox({ label, value, C }: { label: string; value: string; C: typeof THEMES.light }) {
   return (
@@ -965,19 +1306,98 @@ function Modal({ children, onClose, C }: { children: React.ReactNode; onClose: (
   );
 }
 
-function UpgradeModal({ onClose, C, tier }: { onClose: () => void; C: typeof THEMES.light; tier: Tier }) {
+interface AppliedPromo {
+  id: string;
+  code: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  applies_to: string;
+}
+
+function UpgradeModal({ onClose, C, tier, prefillPromo }: { onClose: () => void; C: typeof THEMES.light; tier: Tier; prefillPromo?: PromoData | null }) {
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
   const [selectedTier, setSelectedTier] = useState<"pro" | "guru">("pro");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+
+  // Promo state
+  const [promoInput, setPromoInput] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoError, setPromoError] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+
+  // Auto-apply promo dari banner (prefillPromo) saat modal pertama dibuka
+  useEffect(() => {
+    if (prefillPromo && !appliedPromo) {
+      setAppliedPromo({
+        id: prefillPromo.id,
+        code: prefillPromo.code,
+        discount_type: prefillPromo.discount_type,
+        discount_value: prefillPromo.discount_value,
+        applies_to: prefillPromo.applies_to,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const PRICES: Record<"pro" | "guru", Record<"monthly" | "yearly", number>> = {
     pro:  { monthly: 59000,  yearly: 499000 },
     guru: { monthly: 109000, yearly: 899000 },
   };
 
-  const price = PRICES[selectedTier][period];
-  const saving = period === "yearly" ? Math.round((PRICES[selectedTier].monthly * 12 - price) / (PRICES[selectedTier].monthly * 12) * 100) : 0;
+  const basePrice = PRICES[selectedTier][period];
+  const saving = period === "yearly" ? Math.round((PRICES[selectedTier].monthly * 12 - basePrice) / (PRICES[selectedTier].monthly * 12) * 100) : 0;
+
+  // Hitung harga setelah diskon
+  function calcFinalPrice(base: number, promo: AppliedPromo | null): number {
+    if (!promo) return base;
+    // Cek applies_to: "all" atau tier tertentu
+    const target = promo.applies_to?.toLowerCase() ?? "all";
+    if (target !== "all" && target !== selectedTier) return base;
+
+    if (promo.discount_type === "percent") {
+      return Math.max(0, Math.round(base * (1 - promo.discount_value / 100)));
+    }
+    return Math.max(0, base - promo.discount_value);
+  }
+
+  const finalPrice = calcFinalPrice(basePrice, appliedPromo);
+  const discountAmount = basePrice - finalPrice;
+
+  async function applyPromo() {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    setPromoLoading(true); setPromoError(""); setAppliedPromo(null);
+    try {
+      const res = await fetch("/api/public/promos/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        setPromoError(data.error || "Kode promo tidak valid.");
+      } else {
+        setAppliedPromo(data.promo);
+        setPromoError("");
+      }
+    } catch {
+      setPromoError("Gagal memvalidasi kode promo.");
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
+  function removePromo() {
+    setAppliedPromo(null);
+    setPromoInput("");
+    setPromoError("");
+  }
+
+  // Re-check apakah promo berlaku untuk tier/period yang dipilih
+  const promoApplies = appliedPromo
+    ? (appliedPromo.applies_to?.toLowerCase() === "all" || appliedPromo.applies_to?.toLowerCase() === selectedTier)
+    : false;
 
   async function checkout() {
     setLoading(true); setMsg("");
@@ -985,7 +1405,11 @@ function UpgradeModal({ onClose, C, tier }: { onClose: () => void; C: typeof THE
       const res = await fetch("/api/payment/create-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: selectedTier, period }),
+        body: JSON.stringify({
+          tier: selectedTier,
+          period,
+          ...(appliedPromo && promoApplies ? { promoCode: appliedPromo.code } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setMsg(data.error || "Gagal memproses pembayaran"); return; }
@@ -1021,18 +1445,127 @@ function UpgradeModal({ onClose, C, tier }: { onClose: () => void; C: typeof THE
                 {t === "pro" ? "20 soal/sesi, HOTS, download Word" : "50 soal/sesi, semua fitur Pro"}
               </div>
             </div>
-            <div style={{ fontWeight:800, fontSize:16, color:selectedTier === t ? C.accentText : C.textPrimary }}>
-              {formatRp(PRICES[t][period])}
-              <span style={{ fontSize:11, fontWeight:400 }}>/{period === "monthly" ? "bln" : "thn"}</span>
+            <div style={{ textAlign:"right" as const }}>
+              {appliedPromo && promoApplies && t === selectedTier && discountAmount > 0 ? (
+                <>
+                  <div style={{ fontSize:12, color:C.textMuted, textDecoration:"line-through" }}>
+                    {formatRp(PRICES[t][period])}
+                  </div>
+                  <div style={{ fontWeight:800, fontSize:16, color:"#059669" }}>
+                    {formatRp(finalPrice)}
+                    <span style={{ fontSize:11, fontWeight:400 }}>/{period === "monthly" ? "bln" : "thn"}</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontWeight:800, fontSize:16, color:selectedTier === t ? C.accentText : C.textPrimary }}>
+                  {formatRp(PRICES[t][period])}
+                  <span style={{ fontSize:11, fontWeight:400 }}>/{period === "monthly" ? "bln" : "thn"}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       ))}
 
-      {msg && <p style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>{msg}</p>}
+      {/* ── PROMO CODE SECTION ── */}
+      <div style={{ marginTop:14, marginBottom:4 }}>
+        {!appliedPromo ? (
+          <>
+            <div style={{ display:"flex", gap:6 }}>
+              <input
+                type="text"
+                placeholder="Punya kode promo?"
+                value={promoInput}
+                onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(""); }}
+                onKeyDown={e => e.key === "Enter" && applyPromo()}
+                style={{
+                  flex:1, fontSize:13, padding:"8px 10px",
+                  border:`1px solid ${promoError ? "#ef4444" : C.inputBorder}`,
+                  borderRadius:8, background:C.inputBg, color:C.textPrimary,
+                  fontFamily:"monospace", outline:"none",
+                  letterSpacing:"0.05em",
+                }}
+              />
+              <button
+                onClick={applyPromo}
+                disabled={promoLoading || !promoInput.trim()}
+                style={{
+                  fontSize:12, padding:"8px 14px", border:`1px solid ${C.inputBorder}`,
+                  borderRadius:8, background:C.cardBg, color:C.textPrimary,
+                  cursor: promoLoading || !promoInput.trim() ? "not-allowed" : "pointer",
+                  fontWeight:600, whiteSpace:"nowrap" as const,
+                  opacity: promoLoading || !promoInput.trim() ? 0.5 : 1,
+                }}
+              >
+                {promoLoading ? "…" : "Terapkan"}
+              </button>
+            </div>
+            {promoError && (
+              <p style={{ fontSize:11, color:"#ef4444", marginTop:5, marginBottom:0 }}>{promoError}</p>
+            )}
+          </>
+        ) : (
+          <div style={{
+            display:"flex", alignItems:"center", justifyContent:"space-between",
+            background: promoApplies ? "#ecfdf5" : C.inputBg,
+            border:`1px solid ${promoApplies ? "#6ee7b7" : C.inputBorder}`,
+            borderRadius:8, padding:"8px 12px",
+          }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <span style={{ fontSize:14 }}>{promoApplies ? "🎉" : "ℹ️"}</span>
+              <div>
+                <div style={{ fontSize:12, fontWeight:700, color: promoApplies ? "#065f46" : C.textSecondary, fontFamily:"monospace" }}>
+                  {appliedPromo.code}
+                </div>
+                {promoApplies && discountAmount > 0 ? (
+                  <div style={{ fontSize:11, color:"#059669" }}>
+                    Hemat {appliedPromo.discount_type === "percent" ? `${appliedPromo.discount_value}%` : formatRp(appliedPromo.discount_value)} · Total {formatRp(finalPrice)}
+                  </div>
+                ) : (
+                  <div style={{ fontSize:11, color:C.textMuted }}>
+                    Kode tidak berlaku untuk paket ini
+                  </div>
+                )}
+              </div>
+            </div>
+            <button onClick={removePromo} style={{ background:"none", border:"none", cursor:"pointer", color:C.textMuted, fontSize:16, padding:"0 2px" }}>×</button>
+          </div>
+        )}
+      </div>
 
-      <button onClick={checkout} disabled={loading} style={{ width:"100%", background:"#2563eb", color:"#fff", border:"none", borderRadius:10, padding:12, fontWeight:700, cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.7 : 1, marginTop:8, fontSize:14 }}>
-        {loading ? "Memproses…" : `Bayar ${formatRp(price)}`}
+      {/* ── RINCIAN HARGA ── */}
+      {appliedPromo && promoApplies && discountAmount > 0 && (
+        <div style={{ background:C.inputBg, border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:"12px 14px", marginTop:14 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:C.textSecondary, marginBottom:8 }}>Rincian Pembayaran</div>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:C.textPrimary, marginBottom:4 }}>
+            <span>Harga awal</span>
+            <span>{formatRp(basePrice)}</span>
+          </div>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#059669", marginBottom:8 }}>
+            <span>Diskon ({appliedPromo.code})</span>
+            <span>− {formatRp(discountAmount)}</span>
+          </div>
+          <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:8, display:"flex", justifyContent:"space-between", fontSize:14, fontWeight:800, color:C.textPrimary }}>
+            <span>Total Bayar</span>
+            <span style={{ color:"#059669" }}>{formatRp(finalPrice)}</span>
+          </div>
+        </div>
+      )}
+
+      {msg && <p style={{ fontSize:12, color:"#ef4444", marginBottom:10, marginTop:8 }}>{msg}</p>}
+
+      <button
+        onClick={checkout}
+        disabled={loading}
+        style={{
+          width:"100%", border:"none", borderRadius:10, padding:12, fontWeight:700,
+          cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.7 : 1,
+          marginTop:12, fontSize:14,
+          background: appliedPromo && promoApplies && discountAmount > 0 ? "#059669" : "#2563eb",
+          color:"#fff",
+        }}
+      >
+        {loading ? "Memproses…" : `Bayar ${formatRp(appliedPromo && promoApplies ? finalPrice : basePrice)}`}
       </button>
       <p style={{ fontSize:11, color:C.textMuted, textAlign:"center", marginTop:8 }}>Pembayaran aman via Midtrans · Bisa transfer bank, GoPay, QRIS</p>
     </Modal>

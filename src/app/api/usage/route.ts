@@ -57,6 +57,7 @@ export async function GET() {
       generatesToday,
       generatesTotal,
       tokensUsed,
+      tierExpiresAt: identity.tierExpiresAt,
     })
   } catch (err) {
     console.error('Usage error:', err)

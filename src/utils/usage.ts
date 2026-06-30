@@ -74,14 +74,14 @@ export async function getIdentity() {
       await admin.from('profiles').update({ tier: 'free', tier_expires_at: null }).eq('id', user.id)
     }
 
-    return { type: tier, identifier: user.id, email: user.email ?? null }
+    return { type: tier, identifier: user.id, email: user.email ?? null, tierExpiresAt: tier === 'free' ? null : (profile?.tier_expires_at ?? null) }
   }
 
   const cookieStore = await cookies()
   const guestId = cookieStore.get('guest_id')?.value
   if (!guestId) throw new Error('Guest ID tidak ditemukan')
 
-  return { type: 'guest' as TierType, identifier: guestId, email: null }
+  return { type: 'guest' as TierType, identifier: guestId, email: null, tierExpiresAt: null }
 }
 
 // Hitung total soal yang sudah digenerate hari ini

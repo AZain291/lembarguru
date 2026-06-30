@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
@@ -58,6 +58,7 @@ export default function AdminPage() {
   const [promoMsg, setPromoMsg] = useState('')
   const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users'>('stats')
   const [changingUserTier, setChangingUserTier] = useState<string | null>(null)
+  const [sharePromo, setSharePromo] = useState<any | null>(null)
 
   const router = useRouter()
 
@@ -133,7 +134,7 @@ export default function AdminPage() {
 
   async function deletePromo(id: string) {
     if (!confirm('Hapus promo ini?')) return
-    await fetch(`/api/admin/promos?id=${id}`, { method: 'DELETE' })
+    await fetch('/api/admin/promos', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     reloadPromos()
   }
 
@@ -324,6 +325,9 @@ export default function AdminPage() {
                       <Td c={p.active ? 'Aktif' : 'Nonaktif'} style={{ color: p.active ? S.green : S.muted }} />
                       <Td c={
                         <div style={{ display: 'flex', gap: 4 }}>
+                          <button onClick={() => setSharePromo(p)} style={{ background: 'transparent', border: `1px solid #f59e0b`, color: '#d97706', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>
+                            📤 Share
+                          </button>
                           <button onClick={() => togglePromo(p.id, p.active)} style={{ background: 'transparent', border: `1px solid ${S.border}`, color: S.text, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
                             {p.active ? 'Matikan' : 'Aktifkan'}
                           </button>
@@ -378,6 +382,116 @@ export default function AdminPage() {
             </div>
           </>
         )}
+      </div>
+
+
+      {sharePromo && (
+        <AdminShareModal promo={sharePromo} onClose={() => setSharePromo(null)} />
+      )}
+    </div>
+  )
+}
+
+function AdminShareModal({ promo, onClose }: { promo: any; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [copied, setCopied] = useState(false)
+  const promoUrl = 'https://lembarguru.com/?promo=' + promo.code
+  const disc = promo.discount_type === 'percent'
+    ? promo.discount_value + '% off'
+    : 'Diskon Rp ' + Number(promo.discount_value).toLocaleString('id-ID')
+  const exp = promo.valid_until
+    ? new Date(promo.valid_until).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
+
+  function roundR(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+    ctx.beginPath()
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r)
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h)
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r)
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath()
+  }
+
+  function drawCard() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const W = 1080, H = 1080
+    canvas.width = W; canvas.height = H
+    ctx.fillStyle = '#1a1740'; ctx.fillRect(0,0,W,H)
+    ctx.fillStyle = 'rgba(245,158,11,0.06)'
+    for (let i=0;i<4;i++) { ctx.beginPath(); ctx.arc(W-80, 80+i*60, 200+i*50, 0, Math.PI*2); ctx.fill() }
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('LembarGuru', 80, 100)
+    ctx.fillStyle = 'rgba(245,158,11,0.2)'; roundR(ctx,80,130,220,56,10); ctx.fill()
+    ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 28px sans-serif'; ctx.fillText(disc, 100, 167)
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 72px sans-serif'; ctx.fillText('Upgrade ke Pro', 80, 300)
+    ctx.fillStyle = '#d1cfe8'; ctx.font = '48px sans-serif'; ctx.fillText('harga lebih hemat!', 80, 370)
+    ctx.fillStyle = '#a5a3c0'; ctx.font = '28px sans-serif'
+    ctx.fillText('Generator soal AI untuk guru SD, SMP & SMA', 80, 440)
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; roundR(ctx,80,540,W-160,120,16); ctx.fill()
+    ctx.strokeStyle = 'rgba(245,158,11,0.5)'; ctx.lineWidth = 2; roundR(ctx,80,540,W-160,120,16); ctx.stroke()
+    ctx.fillStyle = '#a5a3c0'; ctx.font = '24px sans-serif'; ctx.fillText('Gunakan kode promo:', 110, 582)
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 52px monospace'; ctx.fillText(promo.code, 110, 640)
+    if (exp) {
+      ctx.fillStyle = '#a5a3c0'; ctx.font = '22px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('Berlaku sampai', W-110, 582)
+      ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 26px sans-serif'; ctx.fillText(exp, W-110, 617); ctx.textAlign = 'left'
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '22px monospace'; ctx.fillText(promoUrl, 80, H-60)
+    ctx.fillStyle = '#f59e0b'; ctx.fillRect(80, H-30, W-160, 4)
+  }
+
+  useEffect(() => { if (canvasRef.current) drawCard() }, [])
+
+  function downloadCard() {
+    if (!canvasRef.current) return
+    const a = document.createElement('a')
+    a.download = 'promo-lembarguru-' + promo.code + '.png'
+    a.href = canvasRef.current.toDataURL('image/png')
+    a.click()
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(promoUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const expText = exp ? ' Berlaku sampai ' + exp + '.' : ''
+  const shareText = 'Promo LembarGuru ' + disc + '!\nGunakan kode *' + promo.code + '* saat upgrade.' + expText + '\n\nGenerator soal AI untuk guru Indonesia.\n' + promoUrl
+
+  const platforms = [
+    { label: 'WhatsApp',   color: '#25d366', icon: '💬', url: 'https://wa.me/?text=' + encodeURIComponent(shareText) },
+    { label: 'X / Twitter', color: '#000000', icon: '𝕏',  url: 'https://twitter.com/intent/tweet?text=' + encodeURIComponent('Promo LembarGuru ' + disc + '! Kode: ' + promo.code + ' ' + promoUrl) },
+    { label: 'Facebook',   color: '#1877f2', icon: 'f',  url: 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(promoUrl) },
+    { label: 'Telegram',   color: '#2aabee', icon: '✈',  url: 'https://t.me/share/url?url=' + encodeURIComponent(promoUrl) + '&text=' + encodeURIComponent(shareText) },
+    { label: 'Threads',    color: '#000000', icon: '@',  url: 'https://www.threads.net/intent/post?text=' + encodeURIComponent(shareText) },
+  ]
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 600, padding: '1rem' }}>
+      <div style={{ background: '#1a1d24', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', position: 'relative', border: '1px solid #2a2e38' }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 14, right: 14, background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#9ca3af' }}>✕</button>
+        <h2 style={{ fontSize: 17, fontWeight: 800, marginBottom: 4, color: '#f3f4f6' }}>📤 Share Promo {promo.code}</h2>
+        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 14 }}>Download share card atau share langsung via link.</p>
+        <canvas ref={canvasRef} style={{ width: '100%', borderRadius: 10, marginBottom: 14, display: 'block' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+          {platforms.map(pl => (
+            <a key={pl.label} href={pl.url} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: pl.color, color: '#fff', borderRadius: 8, padding: '9px 10px', fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+              <span style={{ fontSize: 15 }}>{pl.icon}</span>{pl.label}
+            </a>
+          ))}
+          <button onClick={downloadCard} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            ⬇ Download
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input readOnly value={promoUrl} style={{ flex: 1, fontSize: 12, padding: '8px 10px', border: '1px solid #343844', borderRadius: 8, background: '#22262f', color: '#9ca3af', fontFamily: 'monospace' }} />
+          <button onClick={copyLink} style={{ fontSize: 12, padding: '8px 14px', border: '1px solid ' + (copied ? '#10b981' : '#343844'), borderRadius: 8, background: copied ? '#0f2e22' : '#22262f', color: copied ? '#4ade80' : '#f3f4f6', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {copied ? '✓ Tersalin' : 'Salin link'}
+          </button>
+        </div>
       </div>
     </div>
   )
