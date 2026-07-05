@@ -25,20 +25,13 @@ export function splitSoalBlocks(text: string): string[] {
   return blocks.filter((b) => b.length > 5)
 }
 
-// Mapel tamu bergilir per hari -- string HARUS persis sama dengan salah
-// satu opsi di MAPEL (src/components/LembarGuruApp.tsx) supaya cocok
-// dengan kolom `mapel` yang tersimpan di generated_soal.
-// Index = Date.getDay() (0 = Minggu ... 6 = Sabtu).
-export const GUEST_MAPEL_BY_DAY = [
-  'Seni Budaya',      // Minggu
-  'Matematika',       // Senin
-  'Bahasa Inggris',   // Selasa
-  'IPA',              // Rabu
-  'IPS',              // Kamis
-  'Bahasa Indonesia', // Jumat
-  'PKn',              // Sabtu
-]
+// Nilai `tipe` persis seperti dikirim /api/generate (lihat TYPES di
+// LembarGuruApp.tsx) -- dipakai /api/bank-soal untuk memilah soal
+// pilihan-ganda vs esai per tier.
+export const TIPE_PILIHAN_GANDA = 'Pilihan Ganda'
+export const TIPE_ESAI = 'Esai / Uraian'
 
-export function guestMapelToday(): string {
-  return GUEST_MAPEL_BY_DAY[new Date().getDay()]
-}
+// Mapel yang jadi batasan tamu & free di Bank Soal -- string HARUS persis
+// sama dengan salah satu opsi di MAPEL (src/components/LembarGuruApp.tsx)
+// supaya cocok dengan kolom `mapel` yang tersimpan di generated_soal.
+export const MAPEL_TERBATAS = 'Matematika'

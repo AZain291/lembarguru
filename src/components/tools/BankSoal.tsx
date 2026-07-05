@@ -16,17 +16,21 @@ interface SoalRow {
 
 type Tier = 'guest' | 'free' | 'pro' | 'guru';
 
-const TIER_LABEL: Record<Tier, string> = {
-  guest: 'Tamu',
-  free: 'Gratis',
-  pro: 'Pro',
-  guru: 'Guru Lengkap',
-};
+function formatSoalWithHeader(item: SoalRow): string {
+  const header = [`Mata Pelajaran: ${item.mapel}`, item.kelas ? `Kelas: ${item.kelas}` : null]
+    .filter(Boolean)
+    .join('\n');
+  return `${header}\n\n${item.teks}`;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 export function BankSoal() {
   const [soal, setSoal] = useState<SoalRow[]>([]);
   const [tier, setTier] = useState<Tier | null>(null);
-  const [mapelHariIni, setMapelHariIni] = useState<string | null>(null);
+  const [mapelTerbatas, setMapelTerbatas] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMapel, setFilterMapel] = useState('Semua');
@@ -38,18 +42,30 @@ export function BankSoal() {
         if (!res.ok) throw new Error(data.error || 'Gagal memuat Bank Soal');
         setSoal(data.soal ?? []);
         setTier(data.tier ?? null);
-        setMapelHariIni(data.mapelHariIni ?? null);
+        setMapelTerbatas(data.mapelTerbatas ?? null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  async function salin(teks: string) {
+  async function salin(item: SoalRow) {
     try {
-      await navigator.clipboard.writeText(teks);
+      await navigator.clipboard.writeText(formatSoalWithHeader(item));
     } catch {
       // abaikan
     }
+  }
+
+  function cetak(item: SoalRow) {
+    const win = window.open('', '_blank', 'width=720,height=840');
+    if (!win) return;
+    const isi = escapeHtml(formatSoalWithHeader(item));
+    win.document.write(
+      `<pre style="font-family: system-ui, sans-serif; white-space: pre-wrap; padding: 28px; font-size: 14px; line-height: 1.6; color: #1F2A44;">${isi}</pre>`
+    );
+    win.document.close();
+    win.focus();
+    win.print();
   }
 
   const daftarMapel = ['Semua', ...Array.from(new Set(soal.map((s) => s.mapel)))];
@@ -59,16 +75,18 @@ export function BankSoal() {
     <div className="flex flex-col gap-4">
       <Card>
         <p className="text-[13px] text-ink-soft">
-          Kumpulan soal ini terisi otomatis dari hasil generate seluruh pengguna LembarGuru.
+          Kumpulan soal ini adalah pilihan untuk mendapatkan soal tanpa harus generate soal di LembarGuru.
           {tier && (
             <>
-              {' '}Kamu masuk sebagai tier <b className="text-ink">{TIER_LABEL[tier]}</b>.
-              {tier === 'guest' && mapelHariIni && (
-                <> Tamu bisa melihat 5 soal <b className="text-ink">{mapelHariIni}</b> hari ini (mapel bergilir tiap hari).</>
+              {' '}Kamu masuk sebagai tier <b className="text-ink">{tier === 'guru' ? 'Guru Lengkap' : tier === 'pro' ? 'Pro' : tier === 'free' ? 'Gratis' : 'Tamu'}</b>.
+              {tier === 'guest' && (
+                <> Tamu bisa melihat 5 soal Pilihan Ganda dan 5 soal Esai dari <b className="text-ink">{mapelTerbatas ?? 'Matematika'}</b>. Upgrade untuk bisa melihat lebih banyak soal.</>
               )}
-              {tier === 'free' && ' Kamu bisa melihat 5 soal masing-masing dari Matematika, IPA, dan Bahasa Inggris.'}
-              {tier === 'pro' && ' Kamu bisa melihat 10 soal masing-masing dari Matematika, IPA, dan Bahasa Inggris.'}
-              {tier === 'guru' && ' Sebagai Guru Lengkap, kamu bisa melihat semua mapel tanpa batas.'}
+              {tier === 'free' && (
+                <> Kamu bisa melihat 15 soal Pilihan Ganda dan 10 soal Esai dari <b className="text-ink">{mapelTerbatas ?? 'Matematika'}</b>. Upgrade ke Pro untuk melihat soal dari semua mata pelajaran.</>
+              )}
+              {tier === 'pro' && ' Kamu bisa melihat 30 soal Pilihan Ganda dan 20 soal Esai dari semua mata pelajaran.'}
+              {tier === 'guru' && ' Sebagai Guru Lengkap, kamu bisa melihat semua soal dari semua mata pelajaran tanpa batas.'}
             </>
           )}
         </p>
@@ -90,7 +108,7 @@ export function BankSoal() {
         </Card>
       )}
 
-      {daftarMapel.length > 2 && (
+      {daftarMapel.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {daftarMapel.map((m) => (
             <button
@@ -107,18 +125,23 @@ export function BankSoal() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {filtered.map((item) => (
-          <Card key={item.id}>
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">{item.mapel}</span>
-              {item.kelas && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">Kelas {item.kelas}</span>}
-              {item.kurikulum && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">{item.kurikulum}</span>}
-            </div>
-            <p className="whitespace-pre-wrap text-[13.5px] text-ink">{item.teks}</p>
-            <Button variant="ghost" className="mt-3" onClick={() => salin(item.teks)}>Salin</Button>
-          </Card>
-        ))}
+      <div className="max-h-[70vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {filtered.map((item) => (
+            <Card key={item.id}>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">{item.mapel}</span>
+                {item.kelas && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">Kelas {item.kelas}</span>}
+                {item.kurikulum && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">{item.kurikulum}</span>}
+              </div>
+              <p className="whitespace-pre-wrap text-[13.5px] text-ink">{item.teks}</p>
+              <div className="mt-3 flex gap-2">
+                <Button variant="ghost" onClick={() => salin(item)}>Salin</Button>
+                <Button variant="ghost" onClick={() => cetak(item)}>Cetak</Button>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

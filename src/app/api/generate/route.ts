@@ -23,6 +23,8 @@ function buildPrompt(params: {
 
   const kurikulumNote = kurikulum === 'Kurikulum Merdeka'
     ? `Fase: ${fase}. Sesuaikan dengan CP dan TP Kurikulum Merdeka.`
+    : kurikulum === 'Kurikulum Cambridge'
+    ? 'Sesuaikan dengan standar Cambridge International Curriculum (gaya soal, istilah, dan tingkat berpikir ala Cambridge English). Tulis soal, opsi jawaban, dan pembahasan dalam Bahasa Inggris, kecuali diminta lain.'
     : 'Sesuaikan dengan KD Kurikulum Nasional (K-13).'
 
   const baseInfo = `

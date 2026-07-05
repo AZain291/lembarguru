@@ -80,7 +80,18 @@ const TIER_DEFAULTS: Record<Tier, { maxGen: number | null; maxQ: number; label: 
 const MAPEL = ["Matematika","Bahasa Indonesia","Bahasa Inggris","IPA","IPS","PKn","Sejarah","Biologi","Fisika","Kimia","Pendidikan Agama","Seni Budaya","PJOK","Informatika"];
 const KELAS_LIST = ["1 SD","2 SD","3 SD","4 SD","5 SD","6 SD","7 SMP","8 SMP","9 SMP","10 SMA","11 SMA","12 SMA","Umum"];
 const FASE_CP = ["Fase A (Kelas 1-2)","Fase B (Kelas 3-4)","Fase C (Kelas 5-6)","Fase D (Kelas 7-9)","Fase E (Kelas 10)","Fase F (Kelas 11-12)"];
-const KURIKULUM = ["Kurikulum Merdeka","Kurikulum Nasional (K-13)"];
+const KURIKULUM = ["Kurikulum Merdeka","Kurikulum Nasional (K-13)","Kurikulum Cambridge"];
+
+// Fase CP mengikuti kelas yang dipilih (dipakai handleKelasChange) --
+// pemetaan sesuai jenjang Fase Kurikulum Merdeka resmi.
+const KELAS_TO_FASE: Record<string, string> = {
+  "1 SD": "Fase A (Kelas 1-2)", "2 SD": "Fase A (Kelas 1-2)",
+  "3 SD": "Fase B (Kelas 3-4)", "4 SD": "Fase B (Kelas 3-4)",
+  "5 SD": "Fase C (Kelas 5-6)", "6 SD": "Fase C (Kelas 5-6)",
+  "7 SMP": "Fase D (Kelas 7-9)", "8 SMP": "Fase D (Kelas 7-9)", "9 SMP": "Fase D (Kelas 7-9)",
+  "10 SMA": "Fase E (Kelas 10)",
+  "11 SMA": "Fase F (Kelas 11-12)", "12 SMA": "Fase F (Kelas 11-12)",
+};
 const TYPES = [
   { v: "pilihan_ganda", l: "Pilihan Ganda",    icon: "◉", hasAnswer: true  },
   { v: "essay",         l: "Esai / Uraian",    icon: "✏", hasAnswer: false },
@@ -180,6 +191,14 @@ export default function LembarGuruApp() {
   const [topik, setTopik] = useState("");
   const [difficulty, setDifficulty] = useState("Campuran");
   const [qtype, setQtype] = useState("pilihan_ganda");
+
+  // Fase CP otomatis ikut kelas yang dipilih -- kalau kelasnya "Umum" atau
+  // tidak ada pemetaan (mis. jenjang tidak baku), biarkan fase saat ini.
+  function handleKelasChange(newKelas: string) {
+    setKelas(newKelas);
+    const mappedFase = KELAS_TO_FASE[newKelas];
+    if (mappedFase) setFase(mappedFase);
+  }
 
   // Mixed mode
   const [mixedConfig, setMixedConfig] = useState<MixedConfig>({ pilihan_ganda:5, essay:3, benar_salah:0, isian:0, hots:0 });
@@ -666,7 +685,7 @@ export default function LembarGuruApp() {
                 </div>
                 <div>
                   <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>Kelas</label>
-                  <select value={kelas} onChange={e => setKelas(e.target.value)} style={ss}>
+                  <select value={kelas} onChange={e => handleKelasChange(e.target.value)} style={ss}>
                     {KELAS_LIST.map(k => <option key={k}>{k}</option>)}
                   </select>
                 </div>

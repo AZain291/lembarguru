@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getIdentity } from '@/utils/usage'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { guestMapelToday } from '@/utils/soalBank'
+import { TIPE_PILIHAN_GANDA, TIPE_ESAI, MAPEL_TERBATAS } from '@/utils/soalBank'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,52 +15,72 @@ interface SoalRow {
   created_at: string
 }
 
-// Ambil sampai 200 soal terbaru untuk satu mapel, acak urutannya, lalu
-// potong sejumlah `limit`. Random di JS (bukan ORDER BY random() di
-// Postgres) supaya tidak perlu RPC tambahan.
-async function ambilAcakPerMapel(admin: ReturnType<typeof createAdminClient>, mapel: string, limit: number): Promise<SoalRow[]> {
-  const { data } = await admin
-    .from('generated_soal')
-    .select('id, mapel, kelas, kurikulum, tipe, teks, created_at')
-    .eq('mapel', mapel)
-    .order('created_at', { ascending: false })
-    .limit(200)
-
-  const rows = (data ?? []) as SoalRow[]
-  for (let i = rows.length - 1; i > 0; i--) {
+function shuffle<T>(rows: T[]): T[] {
+  const arr = [...rows]
+  for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[rows[i], rows[j]] = [rows[j], rows[i]]
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
   }
-  return rows.slice(0, limit)
+  return arr
 }
 
-// Komposisi mapel tetap untuk free/pro (bukan mapel acak) -- lihat diskusi
-// fitur ini: free = 5 Matematika + 5 IPA + 5 Bahasa Inggris, pro = 2x lipat.
-const MAPEL_FREE_PRO = ['Matematika', 'IPA', 'Bahasa Inggris']
+// Ambil soal berdasarkan tipe (Pilihan Ganda / Esai), opsional dibatasi ke
+// satu mapel. `randomize` true -> ambil kandidat lebih banyak lalu diacak di
+// JS (dipakai tamu/free); false -> ambil `limit` terbaru langsung, tidak
+// diacak (dipakai pro/guru supaya tampilannya konsisten/tidak acak).
+async function fetchByTipe(
+  admin: ReturnType<typeof createAdminClient>,
+  tipe: string,
+  limit: number,
+  opts: { mapel?: string; randomize: boolean }
+): Promise<SoalRow[]> {
+  let query = admin
+    .from('generated_soal')
+    .select('id, mapel, kelas, kurikulum, tipe, teks, created_at')
+    .eq('tipe', tipe)
+    .order('created_at', { ascending: false })
+    .limit(opts.randomize ? 200 : limit)
+
+  if (opts.mapel) query = query.eq('mapel', opts.mapel)
+
+  const { data } = await query
+  const rows = (data ?? []) as SoalRow[]
+  return opts.randomize ? shuffle(rows).slice(0, limit) : rows
+}
 
 export async function GET() {
   try {
     const identity = await getIdentity()
     const admin = createAdminClient()
 
-    if (identity.type === 'guest') {
-      const mapel = guestMapelToday()
-      const soal = await ambilAcakPerMapel(admin, mapel, 5)
-      return NextResponse.json({ tier: 'guest', mapelHariIni: mapel, soal })
+    // Tamu & Free -- dibatasi ke mapel Matematika saja, hasil diacak setiap
+    // kali dibuka. Tamu: 5 PG + 5 esai. Free: 15 PG + 10 esai.
+    if (identity.type === 'guest' || identity.type === 'free') {
+      const pgLimit = identity.type === 'guest' ? 5 : 15
+      const esaiLimit = identity.type === 'guest' ? 5 : 10
+      const [pg, esai] = await Promise.all([
+        fetchByTipe(admin, TIPE_PILIHAN_GANDA, pgLimit, { mapel: MAPEL_TERBATAS, randomize: true }),
+        fetchByTipe(admin, TIPE_ESAI, esaiLimit, { mapel: MAPEL_TERBATAS, randomize: true }),
+      ])
+      return NextResponse.json({ tier: identity.type, mapelTerbatas: MAPEL_TERBATAS, soal: [...pg, ...esai] })
     }
 
-    if (identity.type === 'free' || identity.type === 'pro') {
-      const perMapel = identity.type === 'free' ? 5 : 10
-      const groups = await Promise.all(MAPEL_FREE_PRO.map((m) => ambilAcakPerMapel(admin, m, perMapel)))
-      return NextResponse.json({ tier: identity.type, soal: groups.flat() })
+    // Pro -- semua mapel, tidak diacak (terbaru dulu), 30 PG + 20 esai.
+    if (identity.type === 'pro') {
+      const [pg, esai] = await Promise.all([
+        fetchByTipe(admin, TIPE_PILIHAN_GANDA, 30, { randomize: false }),
+        fetchByTipe(admin, TIPE_ESAI, 20, { randomize: false }),
+      ])
+      return NextResponse.json({ tier: 'pro', soal: [...pg, ...esai] })
     }
 
-    // guru -- tanpa batas mapel/jumlah (dibatasi 300 terbaru demi ukuran payload)
+    // Guru -- tanpa batas tipe/mapel/jumlah, tidak diacak (dibatasi 500
+    // terbaru demi ukuran payload, bukan pembatasan produk).
     const { data } = await admin
       .from('generated_soal')
       .select('id, mapel, kelas, kurikulum, tipe, teks, created_at')
       .order('created_at', { ascending: false })
-      .limit(300)
+      .limit(500)
 
     return NextResponse.json({ tier: 'guru', soal: data ?? [] })
   } catch (err) {
