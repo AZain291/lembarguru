@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import { markReferralSuccess } from '@/lib/referral'
+import { upgradeUserForOrder } from '@/utils/subscription'
 import crypto from 'crypto'
 import { Resend } from 'resend'
-
-// Persentase dari harga paket yang dicatat sebagai reward referral saat
-// pembayaran pertama berhasil. Belum ada konfigurasi admin untuk ini --
-// ubah angka ini kalau bisnis butuh nilai lain.
-const REFERRAL_REWARD_PERCENT = 10
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -18,17 +13,6 @@ function verifySignature(orderId: string, statusCode: string, grossAmount: strin
     .update(`${orderId}${statusCode}${grossAmount}${serverKey}`)
     .digest('hex')
   return hash === signatureKey
-}
-
-// Hitung tanggal expired berdasarkan period
-function calcExpiry(period: 'monthly' | 'yearly'): string {
-  const date = new Date()
-  if (period === 'monthly') {
-    date.setMonth(date.getMonth() + 1)
-  } else {
-    date.setFullYear(date.getFullYear() + 1)
-  }
-  return date.toISOString()
 }
 
 function successEmailTemplate(tier: string, period: string, amount: number, expiresAt: string): string {
@@ -144,32 +128,15 @@ export async function POST(request: NextRequest) {
 
     // ── SUKSES: upgrade tier + kirim email konfirmasi ──
     if (isSuccess && order.status !== 'success') {
-      const expiresAt = calcExpiry(order.period as 'monthly' | 'yearly')
-
-      const { error: profileError } = await admin
-        .from('profiles')
-        .update({
-          tier: order.tier,
-          tier_expires_at: expiresAt,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.user_id)
-
-      if (profileError) {
-        console.error('[webhook] Failed to upgrade tier:', profileError.message)
+      let expiresAt: string
+      try {
+        expiresAt = await upgradeUserForOrder(admin, order)
+      } catch (e: any) {
+        console.error('[webhook] Failed to upgrade tier:', e.message)
         return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
       }
 
       console.log(`[webhook] User ${order.user_id} upgraded to ${order.tier} until ${expiresAt}`)
-
-      // Tandai reward referral sukses (no-op kalau user ini tidak direferensikan
-      // siapa pun -- markReferralSuccess hanya update baris pending yang cocok).
-      try {
-        const rewardAmount = Math.round(order.amount * (REFERRAL_REWARD_PERCENT / 100))
-        await markReferralSuccess(admin, order.user_id, rewardAmount)
-      } catch (e) {
-        console.error('[webhook] gagal menandai referral sukses:', e)
-      }
 
       if (userEmail) {
         try {

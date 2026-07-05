@@ -4,13 +4,13 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 const THEME_STORAGE_KEY = 'lembarguru-theme';
 
-// Halaman /tools/[slug] adalah Server Component (butuh generateMetadata /
-// generateStaticParams), jadi sinkronisasi tema gelap/terang dari
-// localStorage -- yang butuh browser -- dipisah ke client component kecil
-// ini. Key localStorage-nya SENGAJA sama persis dengan yang dipakai
+// Tiap halaman src/app/tools/{slug}/page.tsx adalah Server Component
+// (punya metadata statis per halaman), jadi sinkronisasi tema gelap/terang
+// dari localStorage -- yang butuh browser -- dipisah ke client component
+// kecil ini. Key localStorage-nya SENGAJA sama persis dengan yang dipakai
 // LembarGuruApp.tsx supaya toggle tema di halaman utama ikut berlaku di
 // sini. Class "dark" yang ditaruh di sini men-trigger override token warna
-// di globals.css (.dark { --color-ink: ...; ... }).
+// di src/app/tools/tools.css (.dark { --color-ink: ...; ... }).
 export function ToolThemeWrapper({ children, className = '' }: { children: ReactNode; className?: string }) {
   const [dark, setDark] = useState(false);
 

@@ -22,6 +22,12 @@ interface UserRow {
   created_at: string; total_generates: number
   name: string | null; phone: string | null
 }
+interface OrderRow {
+  order_id: string; user_id: string; email: string
+  tier: string; period: string; amount: number; discount_amount: number | null
+  status: 'pending' | 'success' | 'failed'
+  paid_at: string | null; created_at: string
+}
 
 const S = {
   bg: '#0f1115', card: '#1a1d24', border: '#2a2e38', text: '#f3f4f6',
@@ -57,7 +63,10 @@ export default function AdminPage() {
   const [tierMsg, setTierMsg] = useState('')
   const [newPromo, setNewPromo] = useState({ code: '', discount_type: 'percent', discount_value: 10, applies_to: 'all', max_uses: '', valid_until: '' })
   const [promoMsg, setPromoMsg] = useState('')
-  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users'>('stats')
+  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users' | 'orders'>('stats')
+  const [orders, setOrders] = useState<OrderRow[]>([])
+  const [orderActionLoading, setOrderActionLoading] = useState<string | null>(null)
+  const [orderMsg, setOrderMsg] = useState('')
   const [changingUserTier, setChangingUserTier] = useState<string | null>(null)
   const [sharePromo, setSharePromo] = useState<any | null>(null)
   const [userTierExpiry, setUserTierExpiry] = useState<Record<string, string>>({})
@@ -93,6 +102,7 @@ export default function AdminPage() {
     })
     fetch('/api/admin/promos').then(r => r.json()).then(d => setPromos(d.promos ?? []))
     fetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? []))
+    fetch('/api/admin/orders').then(r => r.json()).then(d => setOrders(d.orders ?? []))
   }, [])
 
   if (loading) return <Centered>Memuat...</Centered>
@@ -189,11 +199,45 @@ export default function AdminPage() {
     setSavingProfile(null)
   }
 
+  async function reloadOrders() {
+    const data = await fetch('/api/admin/orders').then(r => r.json())
+    setOrders(data.orders ?? [])
+  }
+
+  async function markOrderSuccess(orderId: string) {
+    if (!confirm('Tandai transaksi ini sukses dan naikkan tier user secara manual?')) return
+    setOrderActionLoading(orderId); setOrderMsg('')
+    const res = await fetch('/api/admin/orders', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, action: 'mark_success' }),
+    })
+    const data = await res.json()
+    setOrderMsg(res.ok ? '✅ Tier user berhasil dinaikkan' : `❌ ${data.error || 'Gagal'}`)
+    await reloadOrders()
+    setOrderActionLoading(null)
+    setTimeout(() => setOrderMsg(''), 4000)
+  }
+
+  async function markOrderFailed(orderId: string) {
+    if (!confirm('Batalkan transaksi ini? Kalau sebelumnya sukses, tier user akan diturunkan kembali ke free (kalau tier saat ini masih sama dengan tier order ini).')) return
+    setOrderActionLoading(orderId); setOrderMsg('')
+    const res = await fetch('/api/admin/orders', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_id: orderId, action: 'mark_failed' }),
+    })
+    const data = await res.json()
+    setOrderMsg(res.ok ? (data.downgraded ? '✅ Transaksi dibatalkan, tier user diturunkan ke free' : '✅ Transaksi dibatalkan') : `❌ ${data.error || 'Gagal'}`)
+    await reloadOrders()
+    setOrderActionLoading(null)
+    setTimeout(() => setOrderMsg(''), 4000)
+  }
+
   const tabs: { key: typeof activeTab; label: string }[] = [
     { key: 'stats',  label: '📊 Statistik' },
     { key: 'tiers',  label: '⚙️ Harga & Kuota' },
     { key: 'promos', label: '🎟️ Promo' },
     { key: 'users',  label: '👥 Users' },
+    { key: 'orders', label: '💳 Transaksi' },
   ]
 
   return (
@@ -458,6 +502,76 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </>
+        )}
+
+        {/* ── ORDERS/TRANSAKSI TAB ──────────────────────────────────────── */}
+        {activeTab === 'orders' && (
+          <>
+            <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
+              Catatan semua transaksi Midtrans. Status seharusnya berubah otomatis lewat webhook pembayaran --
+              tombol di sini cuma untuk cadangan kalau webhook gagal terpanggil/terproses (tier user langsung
+              disesuaikan begitu status diubah manual di sini).
+            </p>
+            {orderMsg && <div style={{ fontSize: 13, marginBottom: 12, color: orderMsg.includes('✅') ? S.green : S.red }}>{orderMsg}</div>}
+            <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: S.card, textAlign: 'left' }}>
+                    <Th c="Order ID" /><Th c="Email" /><Th c="Paket" /><Th c="Harga" /><Th c="Status" /><Th c="Tanggal" /><Th c="Aksi" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => (
+                    <tr key={o.order_id} style={{ borderTop: `1px solid ${S.border}` }}>
+                      <Td c={o.order_id} style={{ fontFamily: 'monospace', fontSize: 11, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} />
+                      <Td c={o.email} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }} />
+                      <Td c={`${o.tier} · ${o.period === 'yearly' ? 'Tahunan' : 'Bulanan'}`} />
+                      <Td c={
+                        <div>
+                          <div>Rp {Number(o.amount).toLocaleString('id-ID')}</div>
+                          {!!o.discount_amount && (
+                            <div style={{ fontSize: 10, color: S.muted }}>Diskon Rp {Number(o.discount_amount).toLocaleString('id-ID')}</div>
+                          )}
+                        </div>
+                      } />
+                      <Td
+                        c={o.status === 'success' ? 'Sukses' : o.status === 'failed' ? 'Gagal' : 'Pending'}
+                        style={{ color: o.status === 'success' ? S.green : o.status === 'failed' ? S.red : '#f59e0b', fontWeight: 600 }}
+                      />
+                      <Td c={new Date(o.created_at).toLocaleString('id-ID')} />
+                      <Td c={
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {o.status !== 'success' && (
+                            <button
+                              onClick={() => markOrderSuccess(o.order_id)}
+                              disabled={orderActionLoading === o.order_id}
+                              style={{ background: 'transparent', border: `1px solid ${S.green}`, color: S.green, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                            >
+                              Tandai Sukses
+                            </button>
+                          )}
+                          {o.status === 'success' && (
+                            <button
+                              onClick={() => markOrderFailed(o.order_id)}
+                              disabled={orderActionLoading === o.order_id}
+                              style={{ background: 'transparent', border: `1px solid ${S.red}`, color: S.red, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                            >
+                              Batalkan
+                            </button>
+                          )}
+                        </div>
+                      } />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {orders.length === 0 && (
+              <div style={{ color: S.muted, fontSize: 13, marginTop: 16 }}>
+                Belum ada transaksi tercatat.
+              </div>
+            )}
           </>
         )}
       </div>

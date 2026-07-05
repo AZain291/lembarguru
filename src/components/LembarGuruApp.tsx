@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
-import { TEACHER_TOOLS, type ToolItem } from "@/lib/teacherTools";
+import { TEACHER_TOOLS } from "@/lib/teacherTools";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -204,11 +205,6 @@ export default function LembarGuruApp() {
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const router = useRouter();
-
-  // Navigasi ke halaman tool guru (placeholder — halaman dibuat menyusul di /tools/{slug})
-  function handleToolClick(tool: ToolItem) {
-    router.push(`/tools/${tool.slug}`);
-  }
 
   // Theme init
   useEffect(() => {
@@ -1059,16 +1055,16 @@ export default function LembarGuruApp() {
                 gap:8,
               }}>
                 {TEACHER_TOOLS.map(tool => (
-                  <button
+                  <Link
                     key={tool.slug}
-                    onClick={() => handleToolClick(tool)}
+                    href={`/tools/${tool.slug}`}
                     title={tool.desc}
                     style={{
                       display:"flex", flexDirection:"column", alignItems:"center",
                       justifyContent:"center", gap:6, minHeight:78,
                       background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
                       padding:"10px 8px", cursor:"pointer", position:"relative" as const,
-                      width:"100%",
+                      width:"100%", textDecoration:"none",
                     }}
                   >
                     {tool.isNew && (
@@ -1080,7 +1076,7 @@ export default function LembarGuruApp() {
                     <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
                       {tool.label}
                     </span>
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
