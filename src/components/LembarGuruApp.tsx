@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { TEACHER_TOOLS, type ToolItem } from "@/lib/teacherTools";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -51,6 +52,8 @@ interface UsageData {
   maxGenFree?: number | null;
   maxSoalFree?: number | null;
   tierExpiresAt?: string | null;
+  name?: string | null;
+  phone?: string | null;
 }
 
 interface PromoData {
@@ -166,6 +169,7 @@ export default function LembarGuruApp() {
   const [theme, setTheme] = useState<Theme>("light");
   const [view, setView] = useState<View>("generate");
   const [usage, setUsage] = useState<UsageData>({ tier:"guest", email:null, used:0, max:3, maxSoal:5, remaining:3 });
+  const [usageReady, setUsageReady] = useState(false);
 
   // Form state
   const [kurikulum, setKurikulum] = useState("Kurikulum Merdeka");
@@ -201,6 +205,11 @@ export default function LembarGuruApp() {
 
   const router = useRouter();
 
+  // Navigasi ke halaman tool guru (placeholder — halaman dibuat menyusul di /tools/{slug})
+  function handleToolClick(tool: ToolItem) {
+    router.push(`/tools/${tool.slug}`);
+  }
+
   // Theme init
   useEffect(() => {
     const saved = typeof window !== "undefined" ? localStorage.getItem("lembarguru-theme") : null;
@@ -220,7 +229,10 @@ export default function LembarGuruApp() {
       if (!res.ok) return;
       const data = await res.json();
       setUsage(prev => ({ ...prev, ...data }));
-    } catch {}
+      setUsageReady(true);
+    } catch {
+      setUsageReady(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -465,10 +477,18 @@ export default function LembarGuruApp() {
             {/* User info */}
             <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:20, padding:"14px", background:C.inputBg, borderRadius:10, border:`1px solid ${C.inputBorder}` }}>
               <div style={{ width:48, height:48, borderRadius:"50%", background:"#2563eb", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, fontWeight:800, flexShrink:0 }}>
-                {(usage.email?.[0] ?? "U").toUpperCase()}
+                {((usage.name?.[0] ?? usage.email?.[0]) ?? "U").toUpperCase()}
               </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:15, color:C.textPrimary }}>{usage.email ?? "-"}</div>
+              <div style={{ minWidth:0 }}>
+                {usage.name && (
+                  <div style={{ fontWeight:700, fontSize:15, color:C.textPrimary, marginBottom:1 }}>{usage.name}</div>
+                )}
+                <div style={{ fontSize:13, color: usage.name ? C.textSecondary : C.textPrimary, fontWeight: usage.name ? 400 : 700 }}>{usage.email ?? "-"}</div>
+                {usage.phone && (
+                  <div style={{ fontSize:12, color:C.textMuted, marginTop:2 }}>
+                    📱 {usage.phone}
+                  </div>
+                )}
                 <div style={{ display:"flex", gap:6, marginTop:4, alignItems:"center" }}>
                   <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:12, background:C.pillBg, color:C.pillText }}>{tierInfo.label}</span>
                   {isPro && <span style={{ fontSize:11, color:C.textMuted }}>Akses penuh</span>}
@@ -1024,6 +1044,48 @@ export default function LembarGuruApp() {
           theme={theme}
         />
       )}
+
+          {/* ── ALAT BANTU GURU — konten ditengahkan di halaman ── */}
+          {usageReady && (
+          <div style={{ padding:"12px 1.5rem", borderBottom:`1px solid ${C.border}`, background:C.cardBg }}>
+            <div style={{ maxWidth:860, margin:"0 auto" }}>
+              <div style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:".07em", color:C.textMuted, marginBottom:10, textAlign:"center" as const }}>
+                🧰 Alat Bantu Guru
+              </div>
+              <div style={{
+                display:"grid",
+                gridTemplateColumns:"repeat(auto-fit, minmax(96px, 1fr))",
+                justifyContent:"center",
+                gap:8,
+              }}>
+                {TEACHER_TOOLS.map(tool => (
+                  <button
+                    key={tool.slug}
+                    onClick={() => handleToolClick(tool)}
+                    title={tool.desc}
+                    style={{
+                      display:"flex", flexDirection:"column", alignItems:"center",
+                      justifyContent:"center", gap:6, minHeight:78,
+                      background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
+                      padding:"10px 8px", cursor:"pointer", position:"relative" as const,
+                      width:"100%",
+                    }}
+                  >
+                    {tool.isNew && (
+                      <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:800, background:"#059669", color:"#fff", padding:"1px 5px", borderRadius:4, lineHeight:1.4 }}>
+                        BARU
+                      </span>
+                    )}
+                    <span style={{ fontSize:19 }}>{tool.icon}</span>
+                    <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
+                      {tool.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          )}
 
       {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
       <footer style={{ borderTop:`1px solid ${C.border}`, background:C.cardBg, padding:"2rem 1.5rem", marginTop:"2rem" }}>

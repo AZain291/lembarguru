@@ -1,4 +1,86 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { -webkit-font-smoothing: antialiased; }
+/* ==========================================================
+   Tailwind — dipakai HANYA oleh src/app/tools/** dan komponen di
+   src/components/tools/**, src/components/ui/**, src/components/forms/**.
+   Halaman lain (landing page, LembarGuruApp, admin) memakai inline style /
+   page.css seperti sebelumnya dan tidak terpengaruh: semua selector di
+   page.css sudah di-scope di bawah .lg-root sehingga spesifisitasnya
+   menang atas preflight Tailwind, dan LembarGuruApp/admin memakai style
+   inline yang selalu menang atas stylesheet apa pun.
+   `@import` WAJIB jadi statement paling atas file (aturan CSS) -- taruh
+   apa pun sebelum ini akan membuatnya diabaikan sebagian tool build.
+   ========================================================== */
+@import "tailwindcss";
+
+/* PENTING: reset ini HARUS di dalam @layer base, bukan aturan lepas (unlayered).
+   CSS Cascade Layers punya urutan menang mutlak: aturan di LUAR @layer
+   manapun selalu menang atas aturan di DALAM layer apa pun, walau
+   spesifisitas selector-nya lebih rendah. Utility Tailwind (mx-auto, px-4,
+   dst) otomatis dibungkus @layer utilities -- kalau reset ini dibiarkan
+   lepas seperti sebelumnya, `margin:0`/`padding:0` di sini akan selalu
+   menang atas margin/padding dari utility manapun, membuat mx-auto dan
+   sejenisnya kelihatan "tidak berfungsi" padahal cuma kalah prioritas layer. */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { -webkit-font-smoothing: antialiased; }
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+@theme {
+  --color-ink: #1F2A44;
+  --color-ink-soft: #5B6478;
+  --color-red: #C23B2E;
+  --color-red-soft: #F3DEDB;
+  --color-green: #2F6F5E;
+  --color-gold: #B98A1F;
+  --color-paper: #F7F4EC;
+  --color-paper-deep: #F1E6CC;
+  --color-grid-line: #DCD5C0;
+  --color-surface: #FFFFFF;
+  --color-accent: #2563EB;
+  --font-display: var(--font-fraunces);
+}
+
+/* Mode gelap untuk halaman /tools/** -- mengikuti tema yang dipilih user
+   di halaman utama (disimpan di localStorage "lembarguru-theme", sama
+   seperti THEMES.dark di LembarGuruApp.tsx / S di admin/page.tsx).
+   ToolThemeWrapper (src/components/tools/ToolThemeWrapper.tsx) menaruh
+   class "dark" di elemen pembungkus saat preferensinya gelap -- karena semua
+   utility di atas ditulis lewat token --color-*, cukup timpa variabelnya di
+   sini, tidak perlu varian dark: di tiap komponen tool.
+   Catatan: --color-ink/--color-accent SENGAJA dipisah -- ink dipakai untuk
+   teks & border tipis (harus jadi terang di atas latar gelap), sedangkan
+   accent dipakai untuk tombol/state aktif solid (harus tetap biru pekat
+   di kedua mode, bukan ikut memutih seperti ink). */
+.dark {
+  --color-ink: #F3F4F6;
+  --color-ink-soft: #9CA3AF;
+  --color-red: #F87171;
+  --color-red-soft: #2A1414;
+  --color-green: #4ADE80;
+  --color-gold: #FBBF24;
+  --color-paper: #0F1115;
+  --color-paper-deep: #22262F;
+  --color-grid-line: #2A2E38;
+  --color-surface: #1A1D24;
+  --color-accent: #3B82F6;
+}
+
+@layer components {
+  .input-field, .select-field {
+    width: 100%;
+    display: block;
+    border: 1px solid var(--color-grid-line);
+    background: var(--color-surface);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 13.5px;
+    color: var(--color-ink);
+    outline: none;
+    font-family: inherit;
+  }
+  .input-field:focus, .select-field:focus {
+    border-color: var(--color-ink);
+  }
+}

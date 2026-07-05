@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/utils/admin'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
 // GET — semua promo (untuk tabel di halaman admin)
 export async function GET() {
+  const user = await requireAdmin()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const admin = createAdminClient()
     const { data, error } = await admin
@@ -23,6 +27,9 @@ export async function GET() {
 
 // POST — buat promo baru
 export async function POST(req: NextRequest) {
+  const user = await requireAdmin()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const body = await req.json()
     const { code, discount_type, discount_value, applies_to, valid_until, max_uses } = body
@@ -62,6 +69,9 @@ export async function POST(req: NextRequest) {
 
 // PATCH — toggle active (matikan/aktifkan)
 export async function PATCH(req: NextRequest) {
+  const user = await requireAdmin()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const { id, active } = await req.json()
 
@@ -88,6 +98,9 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — hapus promo
 export async function DELETE(req: NextRequest) {
+  const user = await requireAdmin()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   try {
     const { id } = await req.json()
 

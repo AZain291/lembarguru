@@ -20,6 +20,7 @@ interface TierRow {
 interface UserRow {
   id: string; email: string; tier: string; tier_expires_at: string | null
   created_at: string; total_generates: number
+  name: string | null; phone: string | null
 }
 
 const S = {
@@ -59,6 +60,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users'>('stats')
   const [changingUserTier, setChangingUserTier] = useState<string | null>(null)
   const [sharePromo, setSharePromo] = useState<any | null>(null)
+  const [userTierExpiry, setUserTierExpiry] = useState<Record<string, string>>({})
+  const [editProfile, setEditProfile] = useState<Record<string, { name: string; phone: string }>>({})
+  const [savingProfile, setSavingProfile] = useState<string | null>(null)
 
   const router = useRouter()
 
@@ -140,9 +144,49 @@ export default function AdminPage() {
 
   async function changeUserTier(userId: string, newTier: string) {
     setChangingUserTier(userId)
-    await fetch('/api/admin/users', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, tier: newTier }) })
+    // Hitung default expiry: 30 hari dari sekarang jika tier bukan free
+    const defaultExpiry = newTier === 'free' ? null : new Date(Date.now() + 30 * 86400000).toISOString()
+    const customExpiry = userTierExpiry[userId]
+    const tierExpiresAt = newTier === 'free' ? null : (customExpiry ? new Date(customExpiry).toISOString() : defaultExpiry)
+
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, tier: newTier, tier_expires_at: tierExpiresAt }),
+    })
     fetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? []))
     setChangingUserTier(null)
+  }
+
+  function profileField(u: UserRow, field: 'name' | 'phone'): string {
+    return editProfile[u.id]?.[field] ?? u[field] ?? ''
+  }
+
+  function setProfileField(u: UserRow, field: 'name' | 'phone', value: string) {
+    setEditProfile(prev => ({
+      ...prev,
+      [u.id]: {
+        name: field === 'name' ? value : profileField(u, 'name'),
+        phone: field === 'phone' ? value : profileField(u, 'phone'),
+      },
+    }))
+  }
+
+  async function saveUserProfile(u: UserRow) {
+    setSavingProfile(u.id)
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: u.id, name: profileField(u, 'name').trim(), phone: profileField(u, 'phone').trim() }),
+    })
+    const data = await fetch('/api/admin/users').then(r => r.json())
+    setUsers(data.users ?? [])
+    setEditProfile(prev => {
+      const next = { ...prev }
+      delete next[u.id]
+      return next
+    })
+    setSavingProfile(null)
   }
 
   const tabs: { key: typeof activeTab; label: string }[] = [
@@ -348,32 +392,66 @@ export default function AdminPage() {
         {activeTab === 'users' && (
           <>
             <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
-              {users.length} user terdaftar. Kamu bisa mengubah tier user langsung dari sini.
+              {users.length} user terdaftar. Kamu bisa mengubah nama, no. WA, dan tier user langsung dari sini.
             </p>
             <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10 }}>
               <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: S.card, textAlign: 'left' }}>
-                    <Th c="Email" /><Th c="Tier" /><Th c="Expires" /><Th c="Total Gen" /><Th c="Bergabung" /><Th c="Ubah Tier" />
+                    <Th c="Email" /><Th c="Nama & No. WA" /><Th c="Tier" /><Th c="Expires" /><Th c="Total Gen" /><Th c="Bergabung" /><Th c="Ubah Tier" />
                   </tr>
                 </thead>
                 <tbody>
                   {users.map(u => (
                     <tr key={u.id} style={{ borderTop: `1px solid ${S.border}` }}>
                       <Td c={u.email} style={{ fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} />
+                      <Td c={
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 }}>
+                          <input
+                            placeholder="Nama"
+                            value={profileField(u, 'name')}
+                            onChange={e => setProfileField(u, 'name', e.target.value)}
+                            style={{ ...inp, fontSize: 11 }}
+                          />
+                          <input
+                            placeholder="No. WA"
+                            value={profileField(u, 'phone')}
+                            onChange={e => setProfileField(u, 'phone', e.target.value)}
+                            style={{ ...inp, fontSize: 11 }}
+                          />
+                          <button
+                            onClick={() => saveUserProfile(u)}
+                            disabled={savingProfile === u.id}
+                            style={{ background: 'transparent', border: `1px solid ${S.border}`, color: S.text, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                          >
+                            {savingProfile === u.id ? 'Menyimpan...' : 'Simpan'}
+                          </button>
+                        </div>
+                      } />
                       <Td c={u.tier} style={{ color: u.tier === 'free' ? S.muted : u.tier === 'pro' ? '#f59e0b' : '#a78bfa' }} />
                       <Td c={u.tier_expires_at ? new Date(u.tier_expires_at).toLocaleDateString('id-ID') : '-'} />
                       <Td c={u.total_generates ?? 0} />
                       <Td c={new Date(u.created_at).toLocaleDateString('id-ID')} />
                       <Td c={
-                        <select
-                          value={u.tier}
-                          disabled={changingUserTier === u.id}
-                          onChange={e => changeUserTier(u.id, e.target.value)}
-                          style={{ ...inp, fontSize: 11 }}
-                        >
-                          {['free', 'pro', 'guru'].map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <select
+                            value={u.tier}
+                            disabled={changingUserTier === u.id}
+                            onChange={e => changeUserTier(u.id, e.target.value)}
+                            style={{ ...inp, fontSize: 11 }}
+                          >
+                            {['free', 'pro', 'guru'].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                          {u.tier !== 'free' && (
+                            <input
+                              type="date"
+                              title="Tanggal kadaluarsa (opsional, default 30 hari)"
+                              value={userTierExpiry[u.id] ?? ''}
+                              onChange={e => setUserTierExpiry(prev => ({ ...prev, [u.id]: e.target.value }))}
+                              style={{ ...inp, fontSize: 10 }}
+                            />
+                          )}
+                        </div>
                       } />
                     </tr>
                   ))}

@@ -8,6 +8,8 @@ export default function LoginPage() {
   const [mode, setMode]         = useState<'login' | 'register'>('login')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
+  const [name, setName]         = useState('')
+  const [phone, setPhone]       = useState('')
   const [message, setMessage]   = useState('')
   const [loading, setLoading]   = useState(false)
   const router   = useRouter()
@@ -18,31 +20,44 @@ export default function LoginPage() {
     setLoading(true)
     setMessage('')
 
-    const { error } = mode === 'register'
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password })
-
+    if (mode === 'register') {
+      const { data, error } = await supabase.auth.signUp({ email, password })
       if (error) {
-            setMessage(error.message)
-          } else {
-            if (mode === 'register') {
-              setMessage('Cek email untuk konfirmasi akun!')
-            } else {
-              let isAdmin = false
-              try {
-                const checkRes = await fetch('/api/admin/check')
-                const checkData = await checkRes.json()
-                isAdmin = !!checkData.isAdmin
-              } catch {
-                // kalau gagal cek admin, lanjut ke homepage biasa
-              }
-              router.push(isAdmin ? '/admin' : '/')
-              router.refresh()
-            }
-          }
+        setMessage(error.message)
+      } else {
+        // Simpan nama & nomor WA ke tabel profiles
+        if (data.user) {
+          await supabase.from('profiles').upsert({
+            id: data.user.id,
+            email,
+            name: name.trim(),
+            phone: phone.trim(),
+          })
+        }
+        setMessage('Cek email untuk konfirmasi akun!')
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setMessage(error.message)
+      } else {
+        let isAdmin = false
+        try {
+          const checkRes = await fetch('/api/admin/check')
+          const checkData = await checkRes.json()
+          isAdmin = !!checkData.isAdmin
+        } catch {
+          // kalau gagal cek admin, lanjut ke homepage biasa
+        }
+        router.push(isAdmin ? '/admin' : '/')
+        router.refresh()
+      }
+    }
 
     setLoading(false)
   }
+
+  const inp = { width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f4f0' }}>
@@ -60,15 +75,34 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Nama & WA — hanya saat register */}
+          {mode === 'register' && (
+            <>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Nama Lengkap</label>
+                <input type="text" placeholder="cth: Budi Santoso" value={name} onChange={e => setName(e.target.value)} required
+                  style={inp} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>
+                  Nomor WhatsApp <span style={{ fontWeight: 400, color: '#9ca3af' }}>(opsional)</span>
+                </label>
+                <input type="tel" placeholder="cth: 08123456789" value={phone} onChange={e => setPhone(e.target.value)}
+                  style={inp} />
+              </div>
+            </>
+          )}
+
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Email</label>
             <input type="email" placeholder="guru@sekolah.ac.id" value={email} onChange={e => setEmail(e.target.value)} required
-              style={{ width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              style={inp} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Password</label>
             <input type="password" placeholder="Minimal 6 karakter" value={password} onChange={e => setPassword(e.target.value)} required minLength={6}
-              style={{ width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+              style={inp} />
           </div>
 
           {message && (
@@ -84,7 +118,7 @@ export default function LoginPage() {
         </form>
 
         <div style={{ textAlign: 'center', marginTop: 18 }}>
-          <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setMessage('') }}
+          <button onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setMessage(''); setName(''); setPhone('') }}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#2563eb', textDecoration: 'underline' }}>
             {mode === 'login' ? 'Belum punya akun? Daftar gratis' : 'Sudah punya akun? Masuk'}
           </button>

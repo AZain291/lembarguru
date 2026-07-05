@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextRequest, NextResponse } from 'next/server'
 import { getIdentity, checkQuota, logUsage, getDynamicTierLimits, type TierType } from '@/utils/usage'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { splitSoalBlocks } from '@/utils/soalBank'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export const maxDuration = 60
@@ -184,6 +186,29 @@ export async function POST(request: NextRequest) {
       questionsCount: totalSoal,
       status: 'success',
     })
+
+    // Simpan tiap soal individual ke kolam Bank Soal bersama (dibaca lagi
+    // lewat /api/bank-soal). Gagal simpan tidak boleh menggagalkan response
+    // ke user -- generate soal sudah berhasil terlepas dari ini.
+    try {
+      const blocks = splitSoalBlocks(hasil)
+      const generatedBy = identity.type === 'guest' ? null : identity.identifier
+      if (blocks.length > 0) {
+        const admin = createAdminClient()
+        await admin.from('generated_soal').insert(
+          blocks.map((teks) => ({
+            user_id: generatedBy,
+            mapel,
+            kelas,
+            kurikulum,
+            tipe,
+            teks,
+          }))
+        )
+      }
+    } catch (e) {
+      console.error('[generate] gagal menyimpan ke bank soal:', e)
+    }
 
     const updatedQuota = await checkQuota(identity)
     const updatedLimit = limits[identity.type]

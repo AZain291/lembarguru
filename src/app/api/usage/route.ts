@@ -11,7 +11,6 @@ export async function GET() {
     const limits = await getDynamicTierLimits()
     const limit = limits[identity.type]
 
-    // Sisa soal yang bisa digenerate hari ini (dibatasi juga oleh maxSoal per sesi)
     const remainingQuota = quota.max === null ? null : Math.max(0, quota.max - quota.used)
     const sliderMax = remainingQuota === null
       ? limit.maxSoal
@@ -20,6 +19,8 @@ export async function GET() {
     let generatesToday = 0
     let generatesTotal = 0
     let tokensUsed = 0
+    let name: string | null = null
+    let phone: string | null = null
 
     if (identity.type !== 'guest') {
       const admin = createAdminClient()
@@ -28,18 +29,21 @@ export async function GET() {
       const startOfDay = new Date()
       startOfDay.setHours(0, 0, 0, 0)
 
-      const [todayRes, totalRes, tokenRes] = await Promise.all([
+      const [todayRes, totalRes, tokenRes, profileRes] = await Promise.all([
         admin.from('usage_logs').select('id', { count: 'exact', head: true })
           .eq(column, identity.identifier).eq('status', 'success').gte('created_at', startOfDay.toISOString()),
         admin.from('usage_logs').select('id', { count: 'exact', head: true })
           .eq(column, identity.identifier).eq('status', 'success'),
         admin.from('usage_logs').select('tokens_used')
           .eq(column, identity.identifier).eq('status', 'success'),
+        admin.from('profiles').select('name, phone').eq('id', identity.identifier).single(),
       ])
 
       generatesToday = todayRes.count ?? 0
       generatesTotal = totalRes.count ?? 0
       tokensUsed = (tokenRes.data ?? []).reduce((sum, row) => sum + (row.tokens_used ?? 0), 0)
+      name = profileRes.data?.name ?? null
+      phone = profileRes.data?.phone ?? null
     }
 
     return NextResponse.json({
@@ -58,6 +62,8 @@ export async function GET() {
       generatesTotal,
       tokensUsed,
       tierExpiresAt: identity.tierExpiresAt,
+      name,
+      phone,
     })
   } catch (err) {
     console.error('Usage error:', err)
