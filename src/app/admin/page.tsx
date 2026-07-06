@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client'
 interface LogRow {
   created_at: string; action: string; status: string
   tokens_used: number | null; user_id: string | null; guest_token: string | null
+  user_display: string
 }
 interface Stats {
   totalUsers: number; tierBreakdown: Record<string, number>
@@ -207,13 +208,17 @@ export default function AdminPage() {
   async function markOrderSuccess(orderId: string) {
     if (!confirm('Tandai transaksi ini sukses dan naikkan tier user secara manual?')) return
     setOrderActionLoading(orderId); setOrderMsg('')
-    const res = await fetch('/api/admin/orders', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, action: 'mark_success' }),
-    })
-    const data = await res.json()
-    setOrderMsg(res.ok ? '✅ Tier user berhasil dinaikkan' : `❌ ${data.error || 'Gagal'}`)
-    await reloadOrders()
+    try {
+      const res = await fetch('/api/admin/orders', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, action: 'mark_success' }),
+      })
+      const data = await res.json()
+      setOrderMsg(res.ok ? '✅ Tier user berhasil dinaikkan' : `❌ ${data.error || 'Gagal'}`)
+      await reloadOrders()
+    } catch {
+      setOrderMsg('❌ Gagal menghubungi server, coba lagi')
+    }
     setOrderActionLoading(null)
     setTimeout(() => setOrderMsg(''), 4000)
   }
@@ -221,13 +226,17 @@ export default function AdminPage() {
   async function markOrderFailed(orderId: string) {
     if (!confirm('Batalkan transaksi ini? Kalau sebelumnya sukses, tier user akan diturunkan kembali ke free (kalau tier saat ini masih sama dengan tier order ini).')) return
     setOrderActionLoading(orderId); setOrderMsg('')
-    const res = await fetch('/api/admin/orders', {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: orderId, action: 'mark_failed' }),
-    })
-    const data = await res.json()
-    setOrderMsg(res.ok ? (data.downgraded ? '✅ Transaksi dibatalkan, tier user diturunkan ke free' : '✅ Transaksi dibatalkan') : `❌ ${data.error || 'Gagal'}`)
-    await reloadOrders()
+    try {
+      const res = await fetch('/api/admin/orders', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: orderId, action: 'mark_failed' }),
+      })
+      const data = await res.json()
+      setOrderMsg(res.ok ? (data.downgraded ? '✅ Transaksi dibatalkan, tier user diturunkan ke free' : '✅ Transaksi dibatalkan') : `❌ ${data.error || 'Gagal'}`)
+      await reloadOrders()
+    } catch {
+      setOrderMsg('❌ Gagal menghubungi server, coba lagi')
+    }
     setOrderActionLoading(null)
     setTimeout(() => setOrderMsg(''), 4000)
   }
@@ -295,7 +304,7 @@ export default function AdminPage() {
                       <Td c={log.action} />
                       <Td c={log.status} style={{ color: log.status === 'error' ? S.red : S.green }} />
                       <Td c={log.tokens_used ?? 0} />
-                      <Td c={(log.user_id ?? log.guest_token ?? '').slice(0, 12)} style={{ fontFamily: 'monospace', fontSize: 11 }} />
+                      <Td c={log.user_display} style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
                     </tr>
                   ))}
                 </tbody>

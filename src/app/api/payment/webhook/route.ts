@@ -110,14 +110,7 @@ export async function POST(request: NextRequest) {
       transaction_status === 'expire' ||
       transaction_status === 'failure'
 
-    // Update status order
-    const newOrderStatus = isSuccess ? 'success' : isFailed ? 'failed' : 'pending'
     const wasAlreadyFinal = order.status === 'success' || order.status === 'failed'
-
-    await admin
-      .from('orders')
-      .update({ status: newOrderStatus, updated_at: new Date().toISOString() })
-      .eq('order_id', order_id)
 
     // Ambil email user untuk notifikasi (hanya kalau perlu kirim email)
     let userEmail: string | null = null
@@ -126,8 +119,14 @@ export async function POST(request: NextRequest) {
       userEmail = userData?.user?.email ?? null
     }
 
-    // ── SUKSES: upgrade tier + kirim email konfirmasi ──
-    if (isSuccess && order.status !== 'success') {
+    // ── SUKSES: upgrade tier DULU, baru tandai order sukses. Urutan ini
+    // penting -- kalau order ditandai sukses duluan lalu upgrade tier-nya
+    // gagal, order akan terkunci permanen kelihatan "sukses" padahal tier
+    // user tidak pernah naik (guard idempotency di atas membuat retry
+    // berikutnya dari Midtrans langsung dilewati karena status sudah
+    // 'success'). Dengan urutan ini, kalau upgrade gagal, order tetap
+    // 'pending' dan Midtrans akan retry webhook ini nanti.
+    if (isSuccess && !wasAlreadyFinal) {
       let expiresAt: string
       try {
         expiresAt = await upgradeUserForOrder(admin, order)
@@ -135,6 +134,11 @@ export async function POST(request: NextRequest) {
         console.error('[webhook] Failed to upgrade tier:', e.message)
         return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 })
       }
+
+      await admin
+        .from('orders')
+        .update({ status: 'success', updated_at: new Date().toISOString() })
+        .eq('order_id', order_id)
 
       console.log(`[webhook] User ${order.user_id} upgraded to ${order.tier} until ${expiresAt}`)
 
@@ -152,8 +156,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ── GAGAL: kirim email pemberitahuan ──
+    // ── GAGAL: tandai order gagal + kirim email pemberitahuan ──
     if (isFailed && !wasAlreadyFinal) {
+      await admin
+        .from('orders')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('order_id', order_id)
+
       console.log(`[webhook] Order ${order_id} failed/cancelled (${transaction_status})`)
 
       if (userEmail) {
@@ -171,6 +180,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (isPending) {
+      if (order.status !== 'pending') {
+        await admin.from('orders').update({ status: 'pending', updated_at: new Date().toISOString() }).eq('order_id', order_id)
+      }
       console.log(`[webhook] Order ${order_id} still pending`)
     }
 
