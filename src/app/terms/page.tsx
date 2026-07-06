@@ -27,6 +27,7 @@ export default function TermsPage() {
         </a>
         <div style={{ display: "flex", gap: 20, fontSize: 13, fontWeight: 600 }}>
           <a href="/about" style={{ color: "#6b7280", textDecoration: "none" }}>Tentang</a>
+          <a href="/blog" style={{ color: "#6b7280", textDecoration: "none" }}>Blog</a>
           <a href="/contact" style={{ color: "#6b7280", textDecoration: "none" }}>Kontak</a>
           <a href="/terms" style={{ color: "#2563eb", textDecoration: "none" }}>Syarat & Ketentuan</a>
         </div>

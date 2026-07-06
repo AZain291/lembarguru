@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/client";
 import { TEACHER_TOOLS } from "@/lib/teacherTools";
+import { ToolIcon } from "@/components/tools/ToolIcon";
+import { BLOG_ARTICLES } from "@/lib/blog";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -198,6 +200,21 @@ export default function LembarGuruApp() {
     setKelas(newKelas);
     const mappedFase = KELAS_TO_FASE[newKelas];
     if (mappedFase) setFase(mappedFase);
+  }
+
+  // "Efek magic" tombol Generate -- percikan partikel yang terbang keluar
+  // dari tombol lalu memudar (lihat @keyframes sparkFly di globals.css).
+  // Sengaja cuma efek visual sesaat, tidak menunda pemanggilan generateSoal().
+  const [sparks, setSparks] = useState<{ id: number; tx: number; ty: number }[]>([]);
+  function burstMagic() {
+    const jumlah = 10;
+    const partikel = Array.from({ length: jumlah }, (_, i) => {
+      const sudut = (i / jumlah) * 2 * Math.PI;
+      const jarak = 34 + Math.random() * 26;
+      return { id: Date.now() + i, tx: Math.cos(sudut) * jarak, ty: Math.sin(sudut) * jarak };
+    });
+    setSparks(partikel);
+    setTimeout(() => setSparks([]), 700);
   }
 
   // Mixed mode
@@ -610,7 +627,7 @@ export default function LembarGuruApp() {
             )}
           </div>
 
-          <div style={{ maxWidth:860, margin:"0 auto", padding:"0 1.5rem 4rem" }}>
+          <div style={{ maxWidth:860, margin:"0 auto", padding:"0 1.5rem 1.5rem" }}>
 
             {/* ── SUBSCRIPTION EXPIRY REMINDER BANNER ── */}
             {isPro && usage.tierExpiresAt && !expiryDismissed && (() => {
@@ -866,7 +883,7 @@ export default function LembarGuruApp() {
                 </div>
               )}
 
-              <div style={{ display:"flex", justifyContent:"center", marginTop:22 }}>
+              <div style={{ display:"flex", justifyContent:"center", marginTop:22, position:"relative" as const }}>
                 {TYPES.find(t => t.v === qtype)?.pro && !isPro ? (
                   <button onClick={() => setModal("upgrade")} style={{
                     width:"100%", maxWidth:320, background:"#d97706", color:"#fff",
@@ -875,16 +892,66 @@ export default function LembarGuruApp() {
                     ⚡ Upgrade untuk Akses {TYPES.find(t => t.v === qtype)?.l}
                   </button>
                 ) : (
-                  <button onClick={generateSoal} disabled={loading || (remaining !== null && remaining <= 0) || (isPgEssay && totalPgEssayQ === 0)} style={{
-                    width:"100%", maxWidth:320, background:"#2563eb", color:"#fff",
-                    border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14,
-                    cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.6 : 1,
-                  }}>
-                    {loading ? "Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
-                  </button>
+                  <>
+                  {sparks.map(s => (
+                    <span key={s.id} style={{
+                      position:"absolute", left:"50%", top:"50%", width:6, height:6, borderRadius:"50%",
+                      background:"#facc15", pointerEvents:"none" as const, zIndex:2,
+                      animation:"sparkFly .7s ease-out forwards",
+                      ["--tx" as any]: `${s.tx}px`, ["--ty" as any]: `${s.ty}px`,
+                    }} />
+                  ))}
+                  <div className={loading ? undefined : "neon-border-wrap"} style={{ width:"100%", maxWidth:320 }}>
+                    <button
+                      onClick={() => { burstMagic(); generateSoal(); }}
+                      disabled={loading || (remaining !== null && remaining <= 0) || (isPgEssay && totalPgEssayQ === 0)}
+                      style={{
+                        width:"100%", background:"#2563eb", color:"#fff",
+                        border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14,
+                        cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.6 : 1,
+                        position:"relative" as const, zIndex:1,
+                        transition:"transform .15s ease",
+                      }}
+                      onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)" }}
+                      onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)" }}
+                    >
+                      {loading ? "Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
+                    </button>
+                  </div>
+                  </>
                 )}
               </div>
             </div>
+
+            {/* ── ARTIKEL BLOG — carousel 2 baris, arah berlawanan, tak berhenti ── */}
+            {(() => {
+              const baris1 = [...BLOG_ARTICLES.slice(0, 3), ...BLOG_ARTICLES.slice(0, 3)];
+              const baris2 = [...BLOG_ARTICLES.slice(3), ...BLOG_ARTICLES.slice(3)];
+              const pill = (a: typeof BLOG_ARTICLES[number], i: number) => (
+                <Link
+                  key={`${a.slug}-${i}`}
+                  href={`/blog/${a.slug}`}
+                  style={{
+                    flexShrink:0, whiteSpace:"nowrap" as const, textDecoration:"none",
+                    background:C.cardBg, color:C.textPrimary, border:`1.5px solid ${C.accent}`,
+                    borderRadius:6, padding:"8px 18px", fontSize:13, fontWeight:400,
+                  }}
+                >
+                  {a.pill}
+                </Link>
+              );
+              return (
+                <div style={{ overflow:"hidden" }}>
+                  <div style={{ display:"flex", gap:10, width:"max-content", marginBottom:10, animation:"marqueeLeft 26s linear infinite" }}>
+                    {baris1.map(pill)}
+                  </div>
+                  <div style={{ display:"flex", gap:10, width:"max-content", animation:"marqueeRight 26s linear infinite" }}>
+                    {baris2.map(pill)}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* LOADING */}
             {loading && (
@@ -1077,6 +1144,7 @@ export default function LembarGuruApp() {
                   <Link
                     key={tool.slug}
                     href={`/tools/${tool.slug}`}
+                    prefetch={true}
                     title={tool.desc}
                     style={{
                       display:"flex", flexDirection:"column", alignItems:"center",
@@ -1091,7 +1159,9 @@ export default function LembarGuruApp() {
                         BARU
                       </span>
                     )}
-                    <span style={{ fontSize:19 }}>{tool.icon}</span>
+                    <span style={{ color:C.accent }}>
+                      <ToolIcon slug={tool.slug} width={20} height={20} />
+                    </span>
                     <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
                       {tool.label}
                     </span>
@@ -1113,6 +1183,7 @@ export default function LembarGuruApp() {
           {/* Links */}
           <div style={{ display:"flex", gap:24, flexWrap:"wrap", justifyContent:"center" }}>
             {[
+              { href:"/blog",    label:"Blog" },
               { href:"/about",   label:"Tentang Kami" },
               { href:"/contact", label:"Kontak" },
               { href:"/terms",   label:"Syarat & Ketentuan" },

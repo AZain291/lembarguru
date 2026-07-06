@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
       const generatedBy = identity.type === 'guest' ? null : identity.identifier
       if (blocks.length > 0) {
         const admin = createAdminClient()
-        await admin.from('generated_soal').insert(
+        const { error: insertError } = await admin.from('generated_soal').insert(
           blocks.map((teks) => ({
             user_id: generatedBy,
             mapel,
@@ -207,6 +207,12 @@ export async function POST(request: NextRequest) {
             teks,
           }))
         )
+        // Supabase TIDAK melempar exception untuk error query -- selalu cek
+        // `error` secara eksplisit, jangan andalkan try/catch saja (itu cuma
+        // menangkap exception JS, bukan error yang dikembalikan Supabase).
+        if (insertError) {
+          console.error('[generate] gagal menyimpan ke bank soal:', insertError.message)
+        }
       }
     } catch (e) {
       console.error('[generate] gagal menyimpan ke bank soal:', e)

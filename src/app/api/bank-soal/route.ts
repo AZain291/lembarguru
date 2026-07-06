@@ -43,7 +43,8 @@ async function fetchByTipe(
 
   if (opts.mapel) query = query.eq('mapel', opts.mapel)
 
-  const { data } = await query
+  const { data, error } = await query
+  if (error) console.error('[bank-soal] gagal ambil soal:', error.message)
   const rows = (data ?? []) as SoalRow[]
   return opts.randomize ? shuffle(rows).slice(0, limit) : rows
 }
@@ -76,11 +77,13 @@ export async function GET() {
 
     // Guru -- tanpa batas tipe/mapel/jumlah, tidak diacak (dibatasi 500
     // terbaru demi ukuran payload, bukan pembatasan produk).
-    const { data } = await admin
+    const { data, error } = await admin
       .from('generated_soal')
       .select('id, mapel, kelas, kurikulum, tipe, teks, created_at')
       .order('created_at', { ascending: false })
       .limit(500)
+
+    if (error) console.error('[bank-soal] gagal ambil soal (guru):', error.message)
 
     return NextResponse.json({ tier: 'guru', soal: data ?? [] })
   } catch (err) {

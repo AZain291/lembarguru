@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { ToolItem } from '@/lib/teacherTools';
 import { ToolThemeWrapper } from './ToolThemeWrapper';
+import { ToolIcon } from './ToolIcon';
 
 // Shell halaman yang dipakai oleh semua src/app/tools/{slug}/page.tsx.
 // Sengaja setiap tool punya folder/page.tsx sendiri (bukan satu
@@ -20,7 +21,9 @@ export function ToolPageShell({ tool, children }: { tool: ToolItem; children: Re
         </Link>
 
         <div className="mb-6 flex items-start gap-3">
-          <span className="text-[32px] leading-none">{tool.icon}</span>
+          <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <ToolIcon slug={tool.slug} className="h-6 w-6" />
+          </span>
           <div>
             <h1 className="font-display text-[24px] font-semibold text-ink">{tool.label}</h1>
             <p className="text-[13.5px] text-ink-soft">{tool.desc}</p>

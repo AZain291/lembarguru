@@ -13,3 +13,48 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Tombol "Generate Soal" di LembarGuruApp.tsx -- cincin neon yang berputar
+   terus-menerus mengelilingi border tombol, + percikan partikel ("efek
+   magic") saat diklik. --spin-angle didaftarkan lewat @property supaya
+   browser bisa meng-interpolasi sudutnya dengan mulus antar frame (tanpa
+   ini, conic-gradient akan "melompat" alih-alih berputar halus). */
+@property --spin-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes spinAngle { to { --spin-angle: 360deg; } }
+
+.neon-border-wrap {
+  position: relative;
+  border-radius: 13px;
+  isolation: isolate;
+}
+.neon-border-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(from var(--spin-angle),
+    transparent 0deg, #22d3ee 50deg, #7c3aed 130deg, #22d3ee 210deg, transparent 300deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spinAngle 2.8s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(124,58,237,.65));
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes sparkFly {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
+}
+
+/* Karusel judul artikel blog di LembarGuruApp.tsx -- baris atas ke kiri,
+   baris bawah ke kanan, tak berhenti (loop mulus karena daftarnya
+   dirender dua kali berturutan lalu digeser tepat -50%). */
+@keyframes marqueeLeft { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes marqueeRight { from { transform: translateX(-50%); } to { transform: translateX(0); } }

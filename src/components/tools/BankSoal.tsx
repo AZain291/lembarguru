@@ -34,6 +34,7 @@ export function BankSoal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMapel, setFilterMapel] = useState('Semua');
+  const [filterKelas, setFilterKelas] = useState('Semua');
 
   useEffect(() => {
     fetch('/api/bank-soal')
@@ -68,8 +69,11 @@ export function BankSoal() {
     win.print();
   }
 
-  const daftarMapel = ['Semua', ...Array.from(new Set(soal.map((s) => s.mapel)))];
-  const filtered = filterMapel === 'Semua' ? soal : soal.filter((s) => s.mapel === filterMapel);
+  const daftarMapel = ['Semua', ...Array.from(new Set(soal.map((s) => s.mapel))).sort()];
+  const daftarKelas = ['Semua', ...Array.from(new Set(soal.map((s) => s.kelas).filter((k): k is string => !!k))).sort()];
+  const filtered = soal.filter(
+    (s) => (filterMapel === 'Semua' || s.mapel === filterMapel) && (filterKelas === 'Semua' || s.kelas === filterKelas)
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -108,20 +112,24 @@ export function BankSoal() {
         </Card>
       )}
 
-      {daftarMapel.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {daftarMapel.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setFilterMapel(m)}
-              className={`rounded-full border px-3 py-1 text-[12.5px] font-medium ${
-                filterMapel === m ? 'border-accent bg-accent text-white' : 'border-grid-line text-ink-soft'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
+      {!loading && !error && soal.length > 0 && (
+        <div className="flex flex-wrap gap-3">
+          <label className="flex flex-col gap-1.5 text-[12.5px] font-medium text-ink">
+            Mata pelajaran
+            <select value={filterMapel} onChange={(e) => setFilterMapel(e.target.value)} className="select-field w-[200px]">
+              {daftarMapel.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5 text-[12.5px] font-medium text-ink">
+            Kelas
+            <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} className="select-field w-[160px]">
+              {daftarKelas.map((k) => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
 
