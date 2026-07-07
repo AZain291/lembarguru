@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { TEACHER_TOOLS } from "@/lib/teacherTools";
 import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
+import { MAPEL, KELAS_LIST } from "@/lib/subjectOptions";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -79,8 +80,6 @@ const TIER_DEFAULTS: Record<Tier, { maxGen: number | null; maxQ: number; label: 
   guru:  { maxGen: null, maxQ: 50, label: "Guru Lengkap",  color: "#7c3aed" },
 };
 
-const MAPEL = ["Matematika","Bahasa Indonesia","Bahasa Inggris","IPA","IPS","PKn","Sejarah","Biologi","Fisika","Kimia","Pendidikan Agama","Seni Budaya","PJOK","Informatika"];
-const KELAS_LIST = ["1 SD","2 SD","3 SD","4 SD","5 SD","6 SD","7 SMP","8 SMP","9 SMP","10 SMA","11 SMA","12 SMA","Umum"];
 const FASE_CP = ["Fase A (Kelas 1-2)","Fase B (Kelas 3-4)","Fase C (Kelas 5-6)","Fase D (Kelas 7-9)","Fase E (Kelas 10)","Fase F (Kelas 11-12)"];
 const KURIKULUM = ["Kurikulum Merdeka","Kurikulum Nasional (K-13)","Kurikulum Cambridge"];
 
@@ -1131,12 +1130,18 @@ export default function LembarGuruApp() {
           {usageReady && (
           <div style={{ padding:"12px 1.5rem", borderBottom:`1px solid ${C.border}`, background:C.cardBg }}>
             <div style={{ maxWidth:860, margin:"0 auto" }}>
-              <div style={{ fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:".07em", color:C.textMuted, marginBottom:10, textAlign:"center" as const }}>
-                🧰 Alat Bantu Guru
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:".07em", color:C.textMuted, marginBottom:10 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
+                  <rect x="3" y="8" width="18" height="12" rx="2" />
+                  <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M3 13h18" />
+                  <path d="M10 13v1.6M14 13v1.6" />
+                </svg>
+                Alat Bantu Guru
               </div>
               <div style={{
-                display:"grid",
-                gridTemplateColumns:"repeat(auto-fit, minmax(96px, 1fr))",
+                display:"flex",
+                flexWrap:"wrap" as const,
                 justifyContent:"center",
                 gap:8,
               }}>
@@ -1148,10 +1153,10 @@ export default function LembarGuruApp() {
                     title={tool.desc}
                     style={{
                       display:"flex", flexDirection:"column", alignItems:"center",
-                      justifyContent:"center", gap:6, minHeight:78,
+                      justifyContent:"center", gap:6, minHeight:92,
                       background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
                       padding:"10px 8px", cursor:"pointer", position:"relative" as const,
-                      width:"100%", textDecoration:"none",
+                      flex:"1 1 96px", maxWidth:130, textDecoration:"none",
                     }}
                   >
                     {tool.isNew && (
@@ -1160,7 +1165,7 @@ export default function LembarGuruApp() {
                       </span>
                     )}
                     <span style={{ color:C.accent }}>
-                      <ToolIcon slug={tool.slug} width={20} height={20} />
+                      <ToolIcon slug={tool.slug} width={30} height={30} />
                     </span>
                     <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
                       {tool.label}

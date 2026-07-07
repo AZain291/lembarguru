@@ -21,8 +21,8 @@ export function ToolPageShell({ tool, children }: { tool: ToolItem; children: Re
         </Link>
 
         <div className="mb-6 flex items-start gap-3">
-          <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
-            <ToolIcon slug={tool.slug} className="h-6 w-6" />
+          <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+            <ToolIcon slug={tool.slug} className="h-9 w-9" />
           </span>
           <div>
             <h1 className="font-display text-[24px] font-semibold text-ink">{tool.label}</h1>

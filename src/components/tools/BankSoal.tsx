@@ -30,11 +30,12 @@ function escapeHtml(text: string): string {
 export function BankSoal() {
   const [soal, setSoal] = useState<SoalRow[]>([]);
   const [tier, setTier] = useState<Tier | null>(null);
-  const [mapelTerbatas, setMapelTerbatas] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMapel, setFilterMapel] = useState('Semua');
   const [filterKelas, setFilterKelas] = useState('Semua');
+  const [restrictedMapel, setRestrictedMapel] = useState<string | null>(null);
+  const [restrictedKelas, setRestrictedKelas] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/bank-soal')
@@ -43,7 +44,8 @@ export function BankSoal() {
         if (!res.ok) throw new Error(data.error || 'Gagal memuat Bank Soal');
         setSoal(data.soal ?? []);
         setTier(data.tier ?? null);
-        setMapelTerbatas(data.mapelTerbatas ?? null);
+        setRestrictedMapel(data.mapel ?? null);
+        setRestrictedKelas(data.kelas ?? null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -83,14 +85,16 @@ export function BankSoal() {
           {tier && (
             <>
               {' '}Kamu masuk sebagai tier <b className="text-ink">{tier === 'guru' ? 'Guru Lengkap' : tier === 'pro' ? 'Pro' : tier === 'free' ? 'Gratis' : 'Tamu'}</b>.
-              {tier === 'guest' && (
-                <> Tamu bisa melihat 5 soal Pilihan Ganda dan 5 soal Esai dari <b className="text-ink">{mapelTerbatas ?? 'Matematika'}</b>. Upgrade untuk bisa melihat lebih banyak soal.</>
+              {tier === 'guru' ? (
+                ' Sebagai Guru Lengkap, kamu bisa melihat semua soal dari semua mata pelajaran tanpa batas.'
+              ) : (
+                <>
+                  {' '}Kamu bisa melihat {soal.length} soal
+                  {restrictedMapel ? <> dari <b className="text-ink">{restrictedMapel}</b></> : ' dari berbagai mata pelajaran'}
+                  {restrictedKelas ? <> kelas <b className="text-ink">{restrictedKelas}</b></> : ''}.
+                  {tier !== 'pro' && ' Upgrade untuk bisa melihat lebih banyak soal.'}
+                </>
               )}
-              {tier === 'free' && (
-                <> Kamu bisa melihat 15 soal Pilihan Ganda dan 10 soal Esai dari <b className="text-ink">{mapelTerbatas ?? 'Matematika'}</b>. Upgrade ke Pro untuk melihat soal dari semua mata pelajaran.</>
-              )}
-              {tier === 'pro' && ' Kamu bisa melihat 30 soal Pilihan Ganda dan 20 soal Esai dari semua mata pelajaran.'}
-              {tier === 'guru' && ' Sebagai Guru Lengkap, kamu bisa melihat semua soal dari semua mata pelajaran tanpa batas.'}
             </>
           )}
         </p>

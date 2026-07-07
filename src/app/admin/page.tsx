@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { MAPEL, KELAS_LIST } from '@/lib/subjectOptions'
 
 interface LogRow {
   created_at: string; action: string; status: string
@@ -17,6 +18,12 @@ interface Stats {
 interface TierRow {
   tier: string; label: string; price_monthly: number; price_yearly: number
   active: boolean; max_soal: number; max_gen_per_day: number | null; unlimited_gen: boolean
+  bank_soal_jumlah: number | null; bank_soal_acak: boolean
+  bank_soal_mapel: string | null; bank_soal_kelas: string | null
+}
+interface GeneratedSoalRow {
+  id: string; mapel: string; kelas: string | null; kurikulum: string | null
+  tipe: string | null; teks: string; hidden: boolean; created_at: string
 }
 interface UserRow {
   id: string; email: string; tier: string; tier_expires_at: string | null
@@ -64,10 +71,14 @@ export default function AdminPage() {
   const [tierMsg, setTierMsg] = useState('')
   const [newPromo, setNewPromo] = useState({ code: '', discount_type: 'percent', discount_value: 10, applies_to: 'all', max_uses: '', valid_until: '' })
   const [promoMsg, setPromoMsg] = useState('')
-  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users' | 'orders'>('stats')
+  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users' | 'orders' | 'soal'>('stats')
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [orderActionLoading, setOrderActionLoading] = useState<string | null>(null)
   const [orderMsg, setOrderMsg] = useState('')
+  const [soalList, setSoalList] = useState<GeneratedSoalRow[]>([])
+  const [soalActionLoading, setSoalActionLoading] = useState<string | null>(null)
+  const [soalMsg, setSoalMsg] = useState('')
+  const [soalFilter, setSoalFilter] = useState<'semua' | 'tampil' | 'sembunyi'>('semua')
   const [changingUserTier, setChangingUserTier] = useState<string | null>(null)
   const [sharePromo, setSharePromo] = useState<any | null>(null)
   const [userTierExpiry, setUserTierExpiry] = useState<Record<string, string>>({})
@@ -104,6 +115,7 @@ export default function AdminPage() {
     fetch('/api/admin/promos').then(r => r.json()).then(d => setPromos(d.promos ?? []))
     fetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? []))
     fetch('/api/admin/orders').then(r => r.json()).then(d => setOrders(d.orders ?? []))
+    fetch('/api/admin/generated-soal').then(r => r.json()).then(d => setSoalList(d.soal ?? []))
   }, [])
 
   if (loading) return <Centered>Memuat...</Centered>
@@ -241,12 +253,53 @@ export default function AdminPage() {
     setTimeout(() => setOrderMsg(''), 4000)
   }
 
+  async function reloadSoal() {
+    const data = await fetch('/api/admin/generated-soal').then(r => r.json())
+    setSoalList(data.soal ?? [])
+  }
+
+  async function toggleSoalHidden(id: string, hidden: boolean) {
+    setSoalActionLoading(id); setSoalMsg('')
+    try {
+      const res = await fetch('/api/admin/generated-soal', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, hidden: !hidden }),
+      })
+      const data = await res.json()
+      setSoalMsg(res.ok ? (hidden ? '✅ Soal ditampilkan lagi' : '✅ Soal disembunyikan') : `❌ ${data.error || 'Gagal'}`)
+      await reloadSoal()
+    } catch {
+      setSoalMsg('❌ Gagal menghubungi server, coba lagi')
+    }
+    setSoalActionLoading(null)
+    setTimeout(() => setSoalMsg(''), 4000)
+  }
+
+  async function deleteSoal(id: string) {
+    if (!confirm('Hapus soal ini secara permanen dari Bank Soal?')) return
+    setSoalActionLoading(id); setSoalMsg('')
+    try {
+      const res = await fetch('/api/admin/generated-soal', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      const data = await res.json()
+      setSoalMsg(res.ok ? '✅ Soal dihapus' : `❌ ${data.error || 'Gagal'}`)
+      await reloadSoal()
+    } catch {
+      setSoalMsg('❌ Gagal menghubungi server, coba lagi')
+    }
+    setSoalActionLoading(null)
+    setTimeout(() => setSoalMsg(''), 4000)
+  }
+
   const tabs: { key: typeof activeTab; label: string }[] = [
     { key: 'stats',  label: '📊 Statistik' },
     { key: 'tiers',  label: '⚙️ Harga & Kuota' },
     { key: 'promos', label: '🎟️ Promo' },
     { key: 'users',  label: '👥 Users' },
     { key: 'orders', label: '💳 Transaksi' },
+    { key: 'soal',   label: '🗂️ Bank Soal' },
   ]
 
   return (
@@ -579,6 +632,156 @@ export default function AdminPage() {
             {orders.length === 0 && (
               <div style={{ color: S.muted, fontSize: 13, marginTop: 16 }}>
                 Belum ada transaksi tercatat.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── BANK SOAL TAB (pengaturan tampilan + moderasi) ────────────── */}
+        {activeTab === 'soal' && (
+          <>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Pengaturan Tampilan Bank Soal</h3>
+            <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
+              Atur jumlah soal yang tampil, filter mata pelajaran/kelas, dan apakah diacak, untuk setiap tier.
+              Guru selalu tanpa batas jadi tidak ada di sini.
+            </p>
+            {tierMsg && <div style={{ fontSize: 13, marginBottom: 12, color: tierMsg.includes('✅') ? S.green : S.red }}>{tierMsg}</div>}
+            <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10, marginBottom: 28 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: S.card, textAlign: 'left' }}>
+                    <Th c="Tier" /><Th c="Jumlah Soal" /><Th c="Mata Pelajaran" /><Th c="Kelas" /><Th c="Acak" /><Th c="" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {tiers.filter(t => t.tier !== 'guru').map(t => (
+                    <tr key={t.tier} style={{ borderTop: `1px solid ${S.border}` }}>
+                      <Td c={t.label} style={{ fontWeight: 700 }} />
+                      <Td c={
+                        <input
+                          type="number"
+                          value={t.bank_soal_jumlah ?? 0}
+                          onChange={e => updateTierField(t.tier, 'bank_soal_jumlah', Number(e.target.value))}
+                          style={{ ...inp, width: 80 }}
+                        />
+                      } />
+                      <Td c={
+                        <select
+                          title="Mata Pelajaran"
+                          value={t.bank_soal_mapel ?? 'Semua'}
+                          onChange={e => updateTierField(t.tier, 'bank_soal_mapel', e.target.value === 'Semua' ? null : e.target.value)}
+                          style={{ ...inp, width: 160 }}
+                        >
+                          <option value="Semua">Semua</option>
+                          {MAPEL.map(m => <option key={m} value={m}>{m}</option>)}
+                        </select>
+                      } />
+                      <Td c={
+                        <select
+                          title="Kelas"
+                          value={t.bank_soal_kelas ?? 'Semua'}
+                          onChange={e => updateTierField(t.tier, 'bank_soal_kelas', e.target.value === 'Semua' ? null : e.target.value)}
+                          style={{ ...inp, width: 120 }}
+                        >
+                          <option value="Semua">Semua</option>
+                          {KELAS_LIST.map(k => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                      } />
+                      <Td c={
+                        <select
+                          title="Acak"
+                          value={t.bank_soal_acak ? 'iya' : 'tidak'}
+                          onChange={e => updateTierField(t.tier, 'bank_soal_acak', e.target.value === 'iya')}
+                          style={{ ...inp, width: 90 }}
+                        >
+                          <option value="iya">Iya</option>
+                          <option value="tidak">Tidak</option>
+                        </select>
+                      } />
+                      <Td c={
+                        <button
+                          onClick={() => saveTier(t)}
+                          disabled={savingTier === t.tier}
+                          style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: savingTier === t.tier ? 0.6 : 1 }}
+                        >
+                          {savingTier === t.tier ? 'Menyimpan...' : 'Simpan'}
+                        </button>
+                      } />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>Moderasi Soal</h3>
+            <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
+              Semua soal yang otomatis masuk ke kolam Bank Soal bersama dari hasil generate user. Sembunyikan
+              soal yang kualitasnya kurang baik (bisa ditampilkan lagi kapan saja) atau hapus permanen.
+            </p>
+            {soalMsg && <div style={{ fontSize: 13, marginBottom: 12, color: soalMsg.includes('✅') ? S.green : S.red }}>{soalMsg}</div>}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+              {([
+                { key: 'semua', label: 'Semua' },
+                { key: 'tampil', label: 'Tampil' },
+                { key: 'sembunyi', label: 'Disembunyikan' },
+              ] as const).map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setSoalFilter(f.key)}
+                  style={{
+                    background: soalFilter === f.key ? S.accent : 'transparent',
+                    border: `1px solid ${soalFilter === f.key ? S.accent : S.border}`,
+                    color: soalFilter === f.key ? '#fff' : S.muted,
+                    borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: S.card, textAlign: 'left' }}>
+                    <Th c="Mapel" /><Th c="Kelas" /><Th c="Tipe" /><Th c="Cuplikan Soal" /><Th c="Status" /><Th c="Aksi" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {soalList
+                    .filter(s => soalFilter === 'semua' ? true : soalFilter === 'tampil' ? !s.hidden : s.hidden)
+                    .map(s => (
+                      <tr key={s.id} style={{ borderTop: `1px solid ${S.border}` }}>
+                        <Td c={s.mapel} />
+                        <Td c={s.kelas ?? '-'} />
+                        <Td c={s.tipe ?? '-'} />
+                        <Td c={s.teks.length > 90 ? s.teks.slice(0, 90) + '…' : s.teks} style={{ maxWidth: 320 }} />
+                        <Td c={s.hidden ? 'Disembunyikan' : 'Tampil'} style={{ color: s.hidden ? S.muted : S.green, fontWeight: 600 }} />
+                        <Td c={
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button
+                              onClick={() => toggleSoalHidden(s.id, s.hidden)}
+                              disabled={soalActionLoading === s.id}
+                              style={{ background: 'transparent', border: `1px solid ${S.border}`, color: S.text, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                            >
+                              {s.hidden ? 'Tampilkan' : 'Sembunyikan'}
+                            </button>
+                            <button
+                              onClick={() => deleteSoal(s.id)}
+                              disabled={soalActionLoading === s.id}
+                              style={{ background: 'transparent', border: `1px solid ${S.red}`, color: S.red, borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        } />
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            {soalList.length === 0 && (
+              <div style={{ color: S.muted, fontSize: 13, marginTop: 16 }}>
+                Belum ada soal tersimpan di Bank Soal.
               </div>
             )}
           </>
