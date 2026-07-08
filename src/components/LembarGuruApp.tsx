@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { TEACHER_TOOLS } from "@/lib/teacherTools";
 import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
-import { MAPEL_BY_KURIKULUM, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
+import { getMapelOptions, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -201,28 +201,33 @@ export default function LembarGuruApp() {
 
   const isSD = kelas.endsWith("SD");
 
-  // Mapel yang tampil di dropdown mengikuti kurikulum yang dipilih --
-  // Cambridge tidak punya PKn/Sejarah/Agama/mapel Kemenag/SMK.
-  const mapelOptions = MAPEL_BY_KURIKULUM[kurikulum] ?? MAPEL_BY_KURIKULUM["Kurikulum Merdeka"];
+  // Mapel yang tampil di dropdown mengikuti kurikulum DAN jenjang kelas
+  // yang dipilih -- mis. Fikih cuma muncul untuk MTs/MA, Cambridge tidak
+  // punya PKn/Sejarah/Agama/mapel Kemenag/SMK.
+  const mapelOptions = getMapelOptions(kurikulum, kelas);
 
   // Ganti kurikulum bisa membuat mapel yang lagi dipilih jadi tidak
   // relevan (mis. "Fikih" di Kurikulum Cambridge) -- jatuhkan ke opsi
   // pertama yang masih ada di daftar supaya tidak nyangkut di nilai lama.
   function handleKurikulumChange(newKurikulum: string) {
     setKurikulum(newKurikulum);
-    const options = MAPEL_BY_KURIKULUM[newKurikulum] ?? [];
+    const options = getMapelOptions(newKurikulum, kelas);
     if (!options.includes(mapel)) setMapel(options[0]);
   }
 
   // Fase CP otomatis ikut kelas yang dipilih -- kalau kelasnya "Umum" atau
   // tidak ada pemetaan (mis. jenjang tidak baku), biarkan fase saat ini.
   // Tema tematik cuma relevan untuk SD dan berbeda per kelas, jadi direset
-  // begitu pindah ke jenjang lain atau ganti kelas SD.
+  // begitu pindah ke jenjang lain atau ganti kelas SD. Mapel juga bisa
+  // jadi tidak relevan lagi (mis. pindah dari MTs ke SD sambil "Fikih"
+  // masih terpilih) -- jatuhkan ke opsi pertama yang masih valid.
   function handleKelasChange(newKelas: string) {
     setKelas(newKelas);
     const mappedFase = KELAS_TO_FASE[newKelas];
     if (mappedFase) setFase(mappedFase);
     setTema("");
+    const options = getMapelOptions(kurikulum, newKelas);
+    if (!options.includes(mapel)) setMapel(options[0]);
   }
 
   // "Efek magic" tombol Generate -- percikan partikel yang terbang keluar

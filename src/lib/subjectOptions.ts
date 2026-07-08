@@ -28,6 +28,42 @@ export const MAPEL_BY_KURIKULUM: Record<string, string[]> = {
   "Kurikulum Cambridge": MAPEL_UMUM,
 };
 
+// Mapel yang tidak relevan untuk masing-masing jenjang, dikecualikan dari
+// dropdown -- mis. Fikih tidak muncul untuk SD/SMP/SMA/SMK (cuma
+// MTs/MA), dan Biologi/Fisika/Kimia terpisah tidak muncul untuk
+// SD/SMP/MTs (di sana masih IPA terpadu).
+const MAPEL_EXCLUDE_BY_JENJANG: Record<string, string[]> = {
+  SD:  [...MAPEL_MADRASAH, ...MAPEL_SMK, "Sejarah", "Biologi", "Fisika", "Kimia"],
+  SMP: [...MAPEL_MADRASAH, ...MAPEL_SMK, "Sejarah", "Biologi", "Fisika", "Kimia"],
+  MTs: [...MAPEL_SMK, "Sejarah", "Biologi", "Fisika", "Kimia"],
+  SMA: [...MAPEL_MADRASAH, ...MAPEL_SMK, "IPA"],
+  MA:  [...MAPEL_SMK, "IPA"],
+  SMK: [...MAPEL_MADRASAH, "IPA", "Biologi", "Fisika", "Kimia"],
+  UMUM: [],
+};
+
+// Urutan cek sengaja SMA/SMK sebelum MA -- "10 SMA"/"10 SMK" juga
+// berakhiran "MA"/"A", jadi jenjang yang lebih spesifik harus dicek dulu.
+function jenjangOfKelas(kelas: string): keyof typeof MAPEL_EXCLUDE_BY_JENJANG {
+  if (kelas.endsWith("SD")) return "SD";
+  if (kelas.endsWith("SMP")) return "SMP";
+  if (kelas.endsWith("MTs")) return "MTs";
+  if (kelas.endsWith("SMK")) return "SMK";
+  if (kelas.endsWith("SMA")) return "SMA";
+  if (kelas.endsWith("MA")) return "MA";
+  return "UMUM";
+}
+
+// Daftar mapel final untuk dropdown form generator: gabungan filter
+// kurikulum + jenjang kelas. Selalu jatuh balik ke daftar kurikulum kalau
+// hasil filter jenjang kosong, supaya dropdown tidak pernah kosong.
+export function getMapelOptions(kurikulum: string, kelas: string): string[] {
+  const base = MAPEL_BY_KURIKULUM[kurikulum] ?? MAPEL;
+  const exclude = new Set(MAPEL_EXCLUDE_BY_JENJANG[jenjangOfKelas(kelas)] ?? []);
+  const filtered = base.filter(m => !exclude.has(m));
+  return filtered.length ? filtered : base;
+}
+
 export const KELAS_LIST = [
   "1 SD", "2 SD", "3 SD", "4 SD", "5 SD", "6 SD",
   "7 SMP", "7 MTs",
