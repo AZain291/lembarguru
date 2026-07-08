@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { TEACHER_TOOLS } from "@/lib/teacherTools";
 import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
-import { MAPEL, KELAS_LIST } from "@/lib/subjectOptions";
+import { MAPEL, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -90,8 +90,13 @@ const KELAS_TO_FASE: Record<string, string> = {
   "3 SD": "Fase B (Kelas 3-4)", "4 SD": "Fase B (Kelas 3-4)",
   "5 SD": "Fase C (Kelas 5-6)", "6 SD": "Fase C (Kelas 5-6)",
   "7 SMP": "Fase D (Kelas 7-9)", "8 SMP": "Fase D (Kelas 7-9)", "9 SMP": "Fase D (Kelas 7-9)",
+  "7 MTs": "Fase D (Kelas 7-9)", "8 MTs": "Fase D (Kelas 7-9)", "9 MTs": "Fase D (Kelas 7-9)",
   "10 SMA": "Fase E (Kelas 10)",
+  "10 MA": "Fase E (Kelas 10)",
+  "10 SMK": "Fase E (Kelas 10)",
   "11 SMA": "Fase F (Kelas 11-12)", "12 SMA": "Fase F (Kelas 11-12)",
+  "11 MA": "Fase F (Kelas 11-12)", "12 MA": "Fase F (Kelas 11-12)",
+  "11 SMK": "Fase F (Kelas 11-12)", "12 SMK": "Fase F (Kelas 11-12)",
 };
 const TYPES = [
   { v: "pilihan_ganda", l: "Pilihan Ganda",    icon: "◉", hasAnswer: true  },
@@ -190,15 +195,21 @@ export default function LembarGuruApp() {
   const [kelas, setKelas] = useState("5 SD");
   const [fase, setFase] = useState("Fase C (Kelas 5-6)");
   const [topik, setTopik] = useState("");
+  const [tema, setTema] = useState("");
   const [difficulty, setDifficulty] = useState("Campuran");
   const [qtype, setQtype] = useState("pilihan_ganda");
 
+  const isSD = kelas.endsWith("SD");
+
   // Fase CP otomatis ikut kelas yang dipilih -- kalau kelasnya "Umum" atau
   // tidak ada pemetaan (mis. jenjang tidak baku), biarkan fase saat ini.
+  // Tema tematik cuma relevan untuk SD dan berbeda per kelas, jadi direset
+  // begitu pindah ke jenjang lain atau ganti kelas SD.
   function handleKelasChange(newKelas: string) {
     setKelas(newKelas);
     const mappedFase = KELAS_TO_FASE[newKelas];
     if (mappedFase) setFase(mappedFase);
+    setTema("");
   }
 
   // "Efek magic" tombol Generate -- percikan partikel yang terbang keluar
@@ -335,12 +346,14 @@ export default function LembarGuruApp() {
 
     setLoading(true); setResult(null); setError(""); setShowAnswerKey(false);
 
+    const finalTopik = tema ? (topik ? `Tema: ${tema} — ${topik}` : `Tema: ${tema}`) : topik;
+
     try {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mapel, kelas, topik, difficulty, kurikulum,
+          mapel, kelas, topik: finalTopik, difficulty, kurikulum,
           fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
           tipe: isMixed ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
           jumlahSoal: limitedNumQ,
@@ -358,7 +371,7 @@ export default function LembarGuruApp() {
       if (qs.length === 0) throw new Error("Parse gagal — respons kosong");
 
       setResult({
-        questions: qs, mapel, kelas, topik, kurikulum,
+        questions: qs, mapel, kelas, topik: finalTopik, kurikulum,
         fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
         mixed: isMixed,
         mixedConfig: isMixed ? mixedConfig : undefined,
@@ -727,6 +740,18 @@ export default function LembarGuruApp() {
                   <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>Tingkat Kesulitan</label>
                   <select value={difficulty} onChange={e => setDifficulty(e.target.value)} style={{ ...ss, maxWidth:200 }}>
                     {DIFFICULTY.map(d => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {isSD && (
+                <div style={{ marginBottom:12 }}>
+                  <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+                    Tema Pembelajaran <span style={{ fontWeight:400, color:C.textMuted }}>(opsional, tematik SD)</span>
+                  </label>
+                  <select value={tema} onChange={e => setTema(e.target.value)} style={ss}>
+                    <option value="">Tanpa tema (soal per mata pelajaran)</option>
+                    {(SD_TEMA[kelas] ?? []).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
               )}
@@ -1128,16 +1153,22 @@ export default function LembarGuruApp() {
 
           {/* ── ALAT BANTU GURU — konten ditengahkan di halaman ── */}
           {usageReady && (
-          <div style={{ padding:"12px 1.5rem", borderBottom:`1px solid ${C.border}`, background:C.cardBg }}>
+          <div style={{ padding:"6px 0.75rem", borderBottom:`1px solid ${C.border}`, background:C.cardBg }}>
             <div style={{ maxWidth:860, margin:"0 auto" }}>
-              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:11, fontWeight:800, textTransform:"uppercase", letterSpacing:".07em", color:C.textMuted, marginBottom:10 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" width={14} height={14}>
-                  <rect x="3" y="8" width="18" height="12" rx="2" />
-                  <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <path d="M3 13h18" />
-                  <path d="M10 13v1.6M14 13v1.6" />
-                </svg>
-                Alat Bantu Guru
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+                <span style={{
+                  display:"inline-flex", alignItems:"center", gap:7,
+                  padding:"5px 14px", borderRadius:999,
+                  background:C.accentBg, color:C.accentText,
+                  fontSize:13, fontWeight:800, textTransform:"uppercase", letterSpacing:".06em",
+                }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" width={17} height={17}>
+                    <path d="M9 6V5a3 3 0 0 1 3-3v0a3 3 0 0 1 3 3v1" />
+                    <rect x="3" y="6" width="18" height="14" rx="2" />
+                    <path d="M3 12h18" />
+                  </svg>
+                  Alat Bantu Guru
+                </span>
               </div>
               <div style={{
                 display:"flex",
@@ -1153,10 +1184,10 @@ export default function LembarGuruApp() {
                     title={tool.desc}
                     style={{
                       display:"flex", flexDirection:"column", alignItems:"center",
-                      justifyContent:"center", gap:6, minHeight:92,
+                      justifyContent:"center", gap:8, minHeight:118,
                       background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
-                      padding:"10px 8px", cursor:"pointer", position:"relative" as const,
-                      flex:"1 1 96px", maxWidth:130, textDecoration:"none",
+                      padding:"7px 4px", cursor:"pointer", position:"relative" as const,
+                      flex:"1 1 118px", maxWidth:156, textDecoration:"none",
                     }}
                   >
                     {tool.isNew && (
@@ -1165,7 +1196,7 @@ export default function LembarGuruApp() {
                       </span>
                     )}
                     <span style={{ color:C.accent }}>
-                      <ToolIcon slug={tool.slug} width={30} height={30} />
+                      <ToolIcon slug={tool.slug} width={54} height={54} />
                     </span>
                     <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
                       {tool.label}
