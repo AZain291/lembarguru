@@ -13,11 +13,12 @@ export const MAPEL = [
 
 export const KELAS_LIST = [
   "1 SD", "2 SD", "3 SD", "4 SD", "5 SD", "6 SD",
-  "7 SMP", "8 SMP", "9 SMP",
-  "7 MTs", "8 MTs", "9 MTs",
-  "10 SMA", "11 SMA", "12 SMA",
-  "10 MA", "11 MA", "12 MA",
-  "10 SMK", "11 SMK", "12 SMK",
+  "7 SMP", "7 MTs",
+  "8 SMP", "8 MTs",
+  "9 SMP", "9 MTs",
+  "10 SMA", "10 MA", "10 SMK",
+  "11 SMA", "11 MA", "11 SMK",
+  "12 SMA", "12 MA", "12 SMK",
   "Umum",
 ];
 

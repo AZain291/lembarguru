@@ -1196,7 +1196,7 @@ export default function LembarGuruApp() {
                       </span>
                     )}
                     <span style={{ color:C.accent }}>
-                      <ToolIcon slug={tool.slug} width={54} height={54} />
+                      <ToolIcon slug={tool.slug} width={46} height={46} />
                     </span>
                     <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
                       {tool.label}
