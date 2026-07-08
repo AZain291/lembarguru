@@ -7,7 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import { TEACHER_TOOLS } from "@/lib/teacherTools";
 import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
-import { MAPEL, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
+import { MAPEL_BY_KURIKULUM, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -200,6 +200,19 @@ export default function LembarGuruApp() {
   const [qtype, setQtype] = useState("pilihan_ganda");
 
   const isSD = kelas.endsWith("SD");
+
+  // Mapel yang tampil di dropdown mengikuti kurikulum yang dipilih --
+  // Cambridge tidak punya PKn/Sejarah/Agama/mapel Kemenag/SMK.
+  const mapelOptions = MAPEL_BY_KURIKULUM[kurikulum] ?? MAPEL_BY_KURIKULUM["Kurikulum Merdeka"];
+
+  // Ganti kurikulum bisa membuat mapel yang lagi dipilih jadi tidak
+  // relevan (mis. "Fikih" di Kurikulum Cambridge) -- jatuhkan ke opsi
+  // pertama yang masih ada di daftar supaya tidak nyangkut di nilai lama.
+  function handleKurikulumChange(newKurikulum: string) {
+    setKurikulum(newKurikulum);
+    const options = MAPEL_BY_KURIKULUM[newKurikulum] ?? [];
+    if (!options.includes(mapel)) setMapel(options[0]);
+  }
 
   // Fase CP otomatis ikut kelas yang dipilih -- kalau kelasnya "Umum" atau
   // tidak ada pemetaan (mis. jenjang tidak baku), biarkan fase saat ini.
@@ -619,7 +632,7 @@ export default function LembarGuruApp() {
             {/* Kurikulum toggle */}
             <div style={{ display:"inline-flex", background:C.track, borderRadius:8, padding:3, gap:2, marginBottom:20 }}>
               {KURIKULUM.map(k => (
-                <button key={k} onClick={() => setKurikulum(k)} style={{ background:kurikulum === k ? C.cardBg : "none", border:"none", cursor:"pointer", fontSize:12, fontWeight:600, padding:"5px 12px", borderRadius:6, color:kurikulum === k ? C.accent : C.textSecondary, boxShadow:kurikulum === k ? C.shadow : "none" }}>
+                <button key={k} onClick={() => handleKurikulumChange(k)} style={{ background:kurikulum === k ? C.cardBg : "none", border:"none", cursor:"pointer", fontSize:12, fontWeight:600, padding:"5px 12px", borderRadius:6, color:kurikulum === k ? C.accent : C.textSecondary, boxShadow:kurikulum === k ? C.shadow : "none" }}>
                   {k}
                 </button>
               ))}
@@ -709,7 +722,7 @@ export default function LembarGuruApp() {
                 <div>
                   <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>Mata Pelajaran</label>
                   <select value={mapel} onChange={e => setMapel(e.target.value)} style={ss}>
-                    {MAPEL.map(m => <option key={m}>{m}</option>)}
+                    {mapelOptions.map(m => <option key={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
