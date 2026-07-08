@@ -23,14 +23,14 @@ export const TEACHER_TOOLS: ToolItem[] = [
   { slug: "jadwal-mengajar",   label: "Jadwal Mengajar",   desc: "Kelola jadwal & pengingat mengajar" },
   { slug: "konversi-nilai",    label: "Konversi Nilai",    desc: "Konversi skor ke skala nilai/huruf" },
   // ── tool tambahan ──
-  { slug: "timer-kelas",       label: "Timer Kelas",       desc: "Pengatur waktu untuk aktivitas/ujian di kelas", isNew: true },
-  { slug: "papan-poin",        label: "Papan Poin Kelas",  desc: "Papan skor gamifikasi untuk memotivasi siswa", isNew: true },
-  { slug: "presensi-digital",  label: "Presensi Digital",  desc: "Absensi siswa harian, disimpan di perangkat ini", isNew: true },
-  { slug: "generator-sertifikat", label: "Sertifikat",     desc: "Buat sertifikat/piagam penghargaan siswa", isNew: true },
-  { slug: "text-to-speech",    label: "Baca Teks (TTS)",   desc: "Ubah teks/cerita jadi audio untuk siswa", isNew: true },
-  { slug: "catatan-siswa",     label: "Catatan Siswa",     desc: "Catat perkembangan & perilaku siswa per individu", isNew: true },
-  { slug: "kalkulator-nilai",  label: "Kalkulator Nilai",  desc: "Hitung rata-rata nilai berbobot & ketuntasan (KKM)", isNew: true },
-  { slug: "ice-breaker",       label: "Ice Breaker",       desc: "Ide game & energizer singkat untuk kelas", isNew: true },
+  { slug: "timer-kelas",       label: "Timer Kelas",       desc: "Pengatur waktu untuk aktivitas/ujian di kelas", isNew: false },
+  { slug: "papan-poin",        label: "Papan Poin Kelas",  desc: "Papan skor gamifikasi untuk memotivasi siswa", isNew: false },
+  { slug: "presensi-digital",  label: "Presensi Digital",  desc: "Absensi siswa harian, disimpan di perangkat ini", isNew: false },
+  { slug: "generator-sertifikat", label: "Sertifikat",     desc: "Buat sertifikat/piagam penghargaan siswa", isNew: false },
+  { slug: "text-to-speech",    label: "Baca Teks (TTS)",   desc: "Ubah teks/cerita jadi audio untuk siswa", isNew: false },
+  { slug: "catatan-siswa",     label: "Catatan Siswa",     desc: "Catat perkembangan & perilaku siswa per individu", isNew: false },
+  { slug: "kalkulator-nilai",  label: "Kalkulator Nilai",  desc: "Hitung rata-rata nilai berbobot & ketuntasan (KKM)", isNew: false },
+  { slug: "ice-breaker",       label: "Ice Breaker",       desc: "Ide game & energizer singkat untuk kelas", isNew: false },
 ];
 
 export function getToolBySlug(slug: string): ToolItem | undefined {
