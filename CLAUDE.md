@@ -82,6 +82,16 @@ kode tapi **tidak** ada di `.env.example`: `CRON_SECRET` (proteksi
    yang dipakai di repo ini — riwayat commit menunjukkan semua langsung ke
    `main`. Ikuti perilaku itu (commit & push ke `main` setelah user minta
    eksplisit), jangan berinisiatif push sendiri.
+7. **Domain kanonik SEO adalah non-www** (`https://lembarguru.com`, sama
+   dengan `metadataBase` di `layout.tsx`). `next.config.js` sudah redirect
+   301 `www` → non-www. Halaman publik baru yang butuh interaktivitas (jadi
+   harus `"use client"`) TIDAK BISA `export const metadata` langsung —
+   pola yang dipakai di repo ini: pisah jadi `page.tsx` (server component,
+   isinya cuma metadata + render child) dan `{Nama}Client.tsx` (component
+   client sebenarnya) — lihat `src/app/harga/`, `src/app/referral/`, atau
+   `src/app/coba-gratis/` sebagai contoh. Halaman yang wajib login (tidak
+   ada konten publik buat Googlebot) diberi `robots: { index: false }`
+   dan TIDAK dimasukkan ke `src/app/sitemap.ts`.
 
 ## Struktur folder (ringkas)
 
@@ -147,6 +157,14 @@ Gerbang di depan tiap generate. Empat tier: `guest | free | pro | guru`.
   dengan menjumlah `usage_logs.questions_count` hari ini (waktu lokal
   server), key `user_id` atau `guest_token`. **Tidak ada kolom counter
   terpisah** — jangan cari/asumsikan tabel `usage_quotas`, itu tidak ada.
+  Untuk tamu, key-nya `guest_token` ATAU `ip_hash` (kolom dari migration
+  0009, dihitung di `src/utils/ip.ts` dari header `x-forwarded-for`) —
+  supaya kuota tamu tidak trivial di-reset cuma dengan clear cookie/
+  incognito (jaringan/IP yang sama tetap kena kuota gabungan). `questions_count`
+  sendiri juga tidak ada di `supabase_migration.sql`/manapun di
+  `migrations/` walau dipakai di sini — sudah ada di DB production
+  (kemungkinan ditambah manual di masa lalu), bukan sesuatu yang perlu
+  dimigrasikan ulang.
 - `/api/generate` cek kedua cap sebelum panggil Anthropic, bangun prompt
   Indonesia spesifik per tipe soal (termasuk mode `campuran` lewat
   `mixedConfig`), lalu `logUsage()` dan kembalikan sisa kuota terbaru.
@@ -167,9 +185,9 @@ Tabel yang ADA: `profiles` (`tier`, `tier_expires_at`, plus `name`/`phone`/
 'guest'` yang membuat kuota harian tamu jadi bisa diatur lewat tab "Harga
 & Kuota"), `orders` (base + `promo_code_id`, `discount_amount`,
 `updated_at` dari 0003 — nama kolom `promo_code_id`, BUKAN `promo_id`),
-`promo_codes`, `referrals`, `referral_redemptions` (0002),
-`generated_soal` (0004, kolom `hidden` dari 0006 — pool bersama untuk
-fitur Bank Soal, lihat bagian tersendiri).
+`promo_codes`, `referrals`, `referral_redemptions` (0002, + kolom `paid_at`
+dari 0007 — lihat bagian Referral), `generated_soal` (0004, kolom `hidden`
+dari 0006 — pool bersama untuk fitur Bank Soal, lihat bagian tersendiri).
 
 Tabel yang TIDAK ADA (jangan referensikan): `usage_quotas`, `plans`,
 `transactions`, `subscriptions`.
@@ -263,7 +281,15 @@ Client-rendered, satu halaman dengan tab: Statistik, Harga & Kuota
 Users (termasuk set manual `tier_expires_at` per user), Transaksi
 (`orders`, tombol Tandai Sukses/Batalkan lewat `upgradeUserForOrder`/
 `downgradeUserForOrder`), Bank Soal (pengaturan tampil per tier +
-moderasi `generated_soal`).
+moderasi `generated_soal`), Referral (lihat bagian Referral), Tool
+(matrix checkbox tier×tool -- kolom `pricing_tiers.enabled_tools` jsonb,
+migration 0010, `null` = semua tool diizinkan). `/api/usage` meneruskan
+`enabledTools` tier user saat ini; `LembarGuruApp.tsx` memakainya untuk
+menampilkan tool yang tidak diizinkan dalam kondisi abu-abu/nonaktif
+(klik membuka `UpgradeModal`, bukan navigasi ke `/tools/{slug}`) --
+**cuma proteksi UI**, halaman `/tools/{slug}` sendiri belum ada
+pengecekan tier di server, jadi URL tetap bisa diakses langsung kalau
+tahu slug-nya.
 
 Otorisasi: `requireAdmin()` (`src/utils/admin.ts`) — email user login
 harus persis sama dengan `process.env.ADMIN_EMAIL`. Tidak ada role table.
@@ -277,6 +303,26 @@ login/register inline, upsert `profiles` langsung dari browser client,
 (dedicated, tangkap `?ref=` ke localStorage, redeem lewat
 `/api/referral/redeem` setelah signup). Kalau menyentuh alur referral,
 ingat cuma jalur `/register` yang mewarisi kode referral.
+
+## Referral
+
+Kode referral dibuat LAZY, bukan saat signup: `GET /api/referral/me`
+(dipanggil dari view "Akun Saya" di `LembarGuruApp.tsx` saat pertama kali
+dibuka) — kalau user login belum punya baris `referrals`, endpoint ini
+generate kode acak dan insert-kan, baru kembalikan `{ code, successCount,
+totalReward, unpaidReward }`. `ReferralBanner.tsx` menampilkan kode itu +
+ringkasan reward-nya.
+
+Reward (10% harga paket, `REFERRAL_REWARD_PERCENT` di
+`src/utils/subscription.ts`) ditandai `status='success'` otomatis oleh
+`markReferralSuccess()` saat referred user bayar pertama kali — TAPI ini
+cuma pencatatan, bukan pembayaran nyata (keputusan produk: reward
+dibayar manual di luar sistem, bukan otomatis lewat wallet/kredit/promo
+code). Kolom `paid_at` di `referral_redemptions` (migration 0007)
+melacak status transfer manual itu, diatur lewat tab admin "🎁 Referral"
+(`/api/admin/referrals`, tombol Tandai Dibayar/Batalkan) — terpisah dari
+`reward_given` yang cuma berarti "redemption ini sukses & reward-nya
+sudah dihitung".
 
 ## Cara verifikasi sebelum selesai
 

@@ -1,14 +1,10 @@
 import { markReferralSuccess } from '@/lib/referral'
+import { getReferralCommissionPercent } from '@/utils/settings'
 
 // Dipakai bersama oleh webhook Midtrans (src/app/api/payment/webhook/route.ts)
 // dan pencatatan transaksi manual di admin (src/app/api/admin/orders/route.ts)
 // supaya kedua jalur "order jadi sukses -> upgrade tier" tidak bisa saling
 // tidak sinkron seperti yang pernah terjadi sebelumnya.
-
-// Persentase dari harga paket yang dicatat sebagai reward referral saat
-// pembayaran pertama berhasil. Belum ada konfigurasi admin untuk ini --
-// ubah angka ini kalau bisnis butuh nilai lain.
-const REFERRAL_REWARD_PERCENT = 10
 
 export function calcExpiry(period: 'monthly' | 'yearly'): string {
   const date = new Date()
@@ -43,7 +39,8 @@ export async function upgradeUserForOrder(
   // Tandai reward referral sukses (no-op kalau user ini tidak direferensikan
   // siapa pun -- markReferralSuccess hanya update baris pending yang cocok).
   try {
-    const rewardAmount = Math.round(order.amount * (REFERRAL_REWARD_PERCENT / 100))
+    const commissionPercent = await getReferralCommissionPercent(admin)
+    const rewardAmount = Math.round(order.amount * (commissionPercent / 100))
     await markReferralSuccess(admin, order.user_id, rewardAmount)
   } catch (e) {
     console.error('[subscription] gagal menandai referral sukses:', e)

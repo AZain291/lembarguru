@@ -28,6 +28,8 @@ export default function TermsPage() {
         <div style={{ display: "flex", gap: 20, fontSize: 13, fontWeight: 600 }}>
           <a href="/about" style={{ color: "#6b7280", textDecoration: "none" }}>Tentang</a>
           <a href="/blog" style={{ color: "#6b7280", textDecoration: "none" }}>Blog</a>
+          <a href="/harga" style={{ color: "#6b7280", textDecoration: "none" }}>Harga</a>
+          <a href="/referral" style={{ color: "#6b7280", textDecoration: "none" }}>Referral</a>
           <a href="/contact" style={{ color: "#6b7280", textDecoration: "none" }}>Kontak</a>
           <a href="/terms" style={{ color: "#2563eb", textDecoration: "none" }}>Syarat & Ketentuan</a>
         </div>

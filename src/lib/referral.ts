@@ -27,9 +27,10 @@ export async function validateReferralInternal(
   return { valid: true, referralId: data.id, referrerUserId: data.referrer_user_id }
 }
 
-// Dipanggil dari webhook pembayaran (src/app/api/payment/webhook/route.ts)
-// setelah subscribe pertama kali berhasil — BELUM disambungkan, karena isi
-// webhook.ts belum dikirim. Tandai TODO di sana untuk panggil fungsi ini.
+// Dipanggil dari src/utils/subscription.ts:upgradeUserForOrder() setelah
+// tier user berhasil dinaikkan (dipanggil dari webhook Midtrans MAUPUN
+// tombol "Tandai Sukses" manual di admin) -- no-op kalau user yang bayar
+// tidak direferensikan siapa pun (tidak ada baris pending yang cocok).
 export async function markReferralSuccess(
   admin: any,
   referredUserId: string,

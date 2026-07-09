@@ -19,7 +19,7 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json()
   const {
     tier, label, price_monthly, price_yearly, active, max_soal, max_gen_per_day, unlimited_gen,
-    bank_soal_jumlah, bank_soal_acak, bank_soal_mapel, bank_soal_kelas,
+    bank_soal_jumlah, bank_soal_acak, bank_soal_mapel, bank_soal_kelas, enabled_tools,
   } = body
 
   if (!tier) return NextResponse.json({ error: 'tier wajib diisi' }, { status: 400 })
@@ -31,6 +31,7 @@ export async function PATCH(request: NextRequest) {
       label, price_monthly, price_yearly, active,
       max_soal, max_gen_per_day, unlimited_gen,
       bank_soal_jumlah, bank_soal_acak, bank_soal_mapel, bank_soal_kelas,
+      enabled_tools,
       updated_at: new Date().toISOString(),
     })
     .eq('tier', tier)

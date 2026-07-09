@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import { MAPEL, KELAS_LIST } from '@/lib/subjectOptions'
+import { TEACHER_TOOLS } from '@/lib/teacherTools'
 
 interface LogRow {
   created_at: string; action: string; status: string
@@ -20,6 +21,7 @@ interface TierRow {
   active: boolean; max_soal: number; max_gen_per_day: number | null; unlimited_gen: boolean
   bank_soal_jumlah: number | null; bank_soal_acak: boolean
   bank_soal_mapel: string | null; bank_soal_kelas: string | null
+  enabled_tools: string[] | null
 }
 interface GeneratedSoalRow {
   id: string; mapel: string; kelas: string | null; kurikulum: string | null
@@ -35,6 +37,11 @@ interface OrderRow {
   tier: string; period: string; amount: number; discount_amount: number | null
   status: 'pending' | 'success' | 'failed'
   paid_at: string | null; created_at: string
+}
+interface ReferralRow {
+  id: string; code: string; referrerEmail: string; referredEmail: string
+  status: 'pending' | 'success' | 'cancelled'
+  reward_amount: number | null; paid_at: string | null; created_at: string
 }
 
 const S = {
@@ -71,10 +78,19 @@ export default function AdminPage() {
   const [tierMsg, setTierMsg] = useState('')
   const [newPromo, setNewPromo] = useState({ code: '', discount_type: 'percent', discount_value: 10, applies_to: 'all', max_uses: '', valid_until: '' })
   const [promoMsg, setPromoMsg] = useState('')
-  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users' | 'orders' | 'soal'>('stats')
+  const [activeTab, setActiveTab] = useState<'stats' | 'tiers' | 'promos' | 'users' | 'orders' | 'soal' | 'referral' | 'tools'>('stats')
+  const [toolsMsg, setToolsMsg] = useState('')
+  const [savingTools, setSavingTools] = useState(false)
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [orderActionLoading, setOrderActionLoading] = useState<string | null>(null)
   const [orderMsg, setOrderMsg] = useState('')
+  const [referrals, setReferrals] = useState<ReferralRow[]>([])
+  const [refActionLoading, setRefActionLoading] = useState<string | null>(null)
+  const [refMsg, setRefMsg] = useState('')
+  const [commissionPercent, setCommissionPercent] = useState<number>(10)
+  const [commissionInput, setCommissionInput] = useState('10')
+  const [savingCommission, setSavingCommission] = useState(false)
+  const [commissionMsg, setCommissionMsg] = useState('')
   const [soalList, setSoalList] = useState<GeneratedSoalRow[]>([])
   const [soalActionLoading, setSoalActionLoading] = useState<string | null>(null)
   const [soalMsg, setSoalMsg] = useState('')
@@ -116,6 +132,13 @@ export default function AdminPage() {
     fetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? []))
     fetch('/api/admin/orders').then(r => r.json()).then(d => setOrders(d.orders ?? []))
     fetch('/api/admin/generated-soal').then(r => r.json()).then(d => setSoalList(d.soal ?? []))
+    fetch('/api/admin/referrals').then(r => r.json()).then(d => {
+      setReferrals(d.redemptions ?? [])
+      if (typeof d.commissionPercent === 'number') {
+        setCommissionPercent(d.commissionPercent)
+        setCommissionInput(String(d.commissionPercent))
+      }
+    })
   }, [])
 
   if (loading) return <Centered>Memuat...</Centered>
@@ -127,9 +150,10 @@ export default function AdminPage() {
     const res = await fetch('/api/admin/pricing', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tier),
     })
+    const data = await res.json().catch(() => ({}))
     setSavingTier(null)
-    setTierMsg(res.ok ? '✅ Tersimpan' : '❌ Gagal menyimpan')
-    setTimeout(() => setTierMsg(''), 3000)
+    setTierMsg(res.ok ? '✅ Tersimpan' : `❌ Gagal menyimpan: ${data.error || 'unknown error'}`)
+    setTimeout(() => setTierMsg(''), 6000)
   }
 
   function updateTierField(tierKey: string, field: string, value: any) {
@@ -253,6 +277,49 @@ export default function AdminPage() {
     setTimeout(() => setOrderMsg(''), 4000)
   }
 
+  async function saveCommission() {
+    const value = Number(commissionInput)
+    if (!Number.isFinite(value) || value < 0) {
+      setCommissionMsg('❌ Persentase tidak valid'); setTimeout(() => setCommissionMsg(''), 4000); return
+    }
+    setSavingCommission(true); setCommissionMsg('')
+    try {
+      const res = await fetch('/api/admin/referrals', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commissionPercent: value }),
+      })
+      const data = await res.json()
+      if (res.ok) { setCommissionPercent(value); setCommissionMsg('✅ Tersimpan') }
+      else setCommissionMsg(`❌ ${data.error || 'Gagal menyimpan'}`)
+    } catch {
+      setCommissionMsg('❌ Gagal menghubungi server, coba lagi')
+    }
+    setSavingCommission(false)
+    setTimeout(() => setCommissionMsg(''), 4000)
+  }
+
+  async function reloadReferrals() {
+    const data = await fetch('/api/admin/referrals').then(r => r.json())
+    setReferrals(data.redemptions ?? [])
+  }
+
+  async function markReferralPaid(id: string, paid: boolean) {
+    setRefActionLoading(id); setRefMsg('')
+    try {
+      const res = await fetch('/api/admin/referrals', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, paid }),
+      })
+      const data = await res.json()
+      setRefMsg(res.ok ? (paid ? '✅ Ditandai sudah dibayar' : '✅ Ditandai belum dibayar') : `❌ ${data.error || 'Gagal'}`)
+      await reloadReferrals()
+    } catch {
+      setRefMsg('❌ Gagal menghubungi server, coba lagi')
+    }
+    setRefActionLoading(null)
+    setTimeout(() => setRefMsg(''), 4000)
+  }
+
   async function reloadSoal() {
     const data = await fetch('/api/admin/generated-soal').then(r => r.json())
     setSoalList(data.soal ?? [])
@@ -300,7 +367,42 @@ export default function AdminPage() {
     { key: 'users',  label: '👥 Users' },
     { key: 'orders', label: '💳 Transaksi' },
     { key: 'soal',   label: '🗂️ Bank Soal' },
+    { key: 'referral', label: '🎁 Referral' },
+    { key: 'tools',    label: '🧰 Tool' },
   ]
+
+  const TOOL_TIER_ORDER = ['guest', 'free', 'pro', 'guru'] as const
+
+  // enabled_tools null berarti "semua tool diizinkan" -- materialize ke
+  // daftar penuh dulu sebelum di-toggle supaya nilainya eksplisit begitu
+  // admin menyentuh salah satu checkbox.
+  function toggleToolForTier(tierKey: string, slug: string) {
+    setTiers(prev => prev.map(t => {
+      if (t.tier !== tierKey) return t
+      const current = t.enabled_tools ?? TEACHER_TOOLS.map(x => x.slug)
+      const next = current.includes(slug) ? current.filter(s => s !== slug) : [...current, slug]
+      return { ...t, enabled_tools: next }
+    }))
+  }
+
+  async function saveAllTools() {
+    setSavingTools(true); setToolsMsg('')
+    try {
+      const results = await Promise.all(
+        tiers.filter(t => TOOL_TIER_ORDER.includes(t.tier as any)).map(t =>
+          fetch('/api/admin/pricing', {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t),
+          })
+        )
+      )
+      const allOk = results.every(r => r.ok)
+      setToolsMsg(allOk ? '✅ Tersimpan' : '❌ Sebagian gagal disimpan, coba lagi')
+    } catch {
+      setToolsMsg('❌ Gagal menghubungi server, coba lagi')
+    }
+    setSavingTools(false)
+    setTimeout(() => setToolsMsg(''), 4000)
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: S.bg, color: S.text, padding: '2rem' }}>
@@ -784,6 +886,144 @@ export default function AdminPage() {
                 Belum ada soal tersimpan di Bank Soal.
               </div>
             )}
+          </>
+        )}
+
+        {/* ── REFERRAL TAB ─────────────────────────────────────────────── */}
+        {activeTab === 'referral' && (
+          <>
+            <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
+              Reward referral ({commissionPercent}% dari harga paket) ditandai otomatis "Sukses" begitu
+              rekan yang direferensikan berhasil bayar pertama kali. Belum ada pembayaran otomatis --
+              transfer reward ke referrer dilakukan manual di luar sistem, lalu ditandai "Sudah Dibayar" di sini.
+            </p>
+
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 20, background: S.card, border: `1px solid ${S.border}`, borderRadius: 10, padding: '14px 16px' }}>
+              <div>
+                <label htmlFor="commission-input" style={{ display: 'block', fontSize: 12, color: S.muted, marginBottom: 6 }}>Komisi Referral</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    id="commission-input"
+                    type="number" min={0} max={100} step={0.5}
+                    value={commissionInput}
+                    onChange={e => setCommissionInput(e.target.value)}
+                    style={{ ...inp, width: 90 }}
+                  />
+                  <span style={{ fontSize: 13, color: S.muted }}>%</span>
+                </div>
+              </div>
+              <button
+                onClick={saveCommission}
+                disabled={savingCommission}
+                style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: savingCommission ? 0.6 : 1 }}
+              >
+                {savingCommission ? 'Menyimpan...' : 'Simpan'}
+              </button>
+              {commissionMsg && <span style={{ fontSize: 13, color: commissionMsg.includes('✅') ? S.green : S.red }}>{commissionMsg}</span>}
+            </div>
+
+            {refMsg && <div style={{ fontSize: 13, marginBottom: 12, color: refMsg.includes('✅') ? S.green : S.red }}>{refMsg}</div>}
+            <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: S.card, textAlign: 'left' }}>
+                    <Th c="Kode" /><Th c="Referrer" /><Th c="Rekan" /><Th c="Status" /><Th c="Reward" /><Th c="Tanggal" /><Th c="Aksi" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {referrals.map(r => (
+                    <tr key={r.id} style={{ borderTop: `1px solid ${S.border}` }}>
+                      <Td c={r.code} style={{ fontFamily: 'monospace' }} />
+                      <Td c={r.referrerEmail} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} />
+                      <Td c={r.referredEmail} style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }} />
+                      <Td
+                        c={r.status === 'success' ? 'Sukses' : r.status === 'cancelled' ? 'Batal' : 'Pending'}
+                        style={{ color: r.status === 'success' ? S.green : r.status === 'cancelled' ? S.red : '#f59e0b', fontWeight: 600 }}
+                      />
+                      <Td c={
+                        r.status === 'success'
+                          ? <div>
+                              <div>Rp {Number(r.reward_amount ?? 0).toLocaleString('id-ID')}</div>
+                              <div style={{ fontSize: 10, color: r.paid_at ? S.green : S.muted }}>{r.paid_at ? 'Sudah dibayar' : 'Belum dibayar'}</div>
+                            </div>
+                          : '-'
+                      } />
+                      <Td c={new Date(r.created_at).toLocaleString('id-ID')} />
+                      <Td c={
+                        r.status === 'success' ? (
+                          <button
+                            onClick={() => markReferralPaid(r.id, !r.paid_at)}
+                            disabled={refActionLoading === r.id}
+                            style={{
+                              background: 'transparent', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer',
+                              border: `1px solid ${r.paid_at ? S.muted : S.green}`, color: r.paid_at ? S.muted : S.green,
+                            }}
+                          >
+                            {r.paid_at ? 'Batalkan' : 'Tandai Dibayar'}
+                          </button>
+                        ) : '-'
+                      } />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {referrals.length === 0 && (
+              <div style={{ color: S.muted, fontSize: 13, marginTop: 16 }}>
+                Belum ada referral tercatat.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── TOOL TAB (akses tool per tier) ──────────────────────────── */}
+        {activeTab === 'tools' && (
+          <>
+            <p style={{ fontSize: 13, color: S.muted, marginBottom: 14 }}>
+              Atur tool "Alat Bantu Guru" mana yang boleh diakses tiap tier. Tool yang tidak dicentang
+              akan ditampilkan abu-abu (nonaktif) di halaman utama untuk user tier tersebut.
+            </p>
+            {toolsMsg && <div style={{ fontSize: 13, marginBottom: 12, color: toolsMsg.includes('✅') ? S.green : S.red }}>{toolsMsg}</div>}
+            <div style={{ overflowX: 'auto', border: `1px solid ${S.border}`, borderRadius: 10, marginBottom: 16 }}>
+              <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: S.card, textAlign: 'left' }}>
+                    <Th c="Tool" />
+                    {TOOL_TIER_ORDER.map(tk => (
+                      <Th key={tk} c={tiers.find(t => t.tier === tk)?.label ?? tk} />
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {TEACHER_TOOLS.map(tool => (
+                    <tr key={tool.slug} style={{ borderTop: `1px solid ${S.border}` }}>
+                      <Td c={tool.label} />
+                      {TOOL_TIER_ORDER.map(tk => {
+                        const t = tiers.find(x => x.tier === tk)
+                        const enabled = !t?.enabled_tools || t.enabled_tools.includes(tool.slug)
+                        return (
+                          <Td key={tk} c={
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              onChange={() => toggleToolForTier(tk, tool.slug)}
+                              title={`${tool.label} untuk tier ${t?.label ?? tk}`}
+                            />
+                          } />
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
+              onClick={saveAllTools}
+              disabled={savingTools}
+              style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: savingTools ? 0.6 : 1 }}
+            >
+              {savingTools ? 'Menyimpan...' : 'Simpan Semua Perubahan'}
+            </button>
           </>
         )}
       </div>

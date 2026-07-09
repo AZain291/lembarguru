@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { getClientIpHash } from '@/utils/ip'
 
 export type TierType = 'guest' | 'free' | 'pro' | 'guru'
 
@@ -54,7 +55,29 @@ export async function getDynamicTierLimits(): Promise<Record<TierType, TierLimit
   }
 }
 
+// Daftar slug tool ("Alat Bantu Guru") yang boleh diakses tier tersebut
+// (kolom enabled_tools, migration 0010) -- null berarti semua tool
+// diizinkan (default, dan juga fallback kalau migration belum jalan/DB
+// error). Dipakai /api/usage supaya client (LembarGuruApp.tsx) tahu tool
+// mana yang harus di-nonaktifkan/di-abu-abukan di toolbar.
+export async function getEnabledTools(tier: TierType): Promise<string[] | null> {
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('pricing_tiers')
+      .select('enabled_tools')
+      .eq('tier', tier)
+      .maybeSingle()
+
+    if (error || !data) return null
+    return Array.isArray(data.enabled_tools) ? data.enabled_tools : null
+  } catch {
+    return null
+  }
+}
+
 export async function getIdentity() {
+  const ipHash = await getClientIpHash()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -74,18 +97,22 @@ export async function getIdentity() {
       await admin.from('profiles').update({ tier: 'free', tier_expires_at: null }).eq('id', user.id)
     }
 
-    return { type: tier, identifier: user.id, email: user.email ?? null, tierExpiresAt: tier === 'free' ? null : (profile?.tier_expires_at ?? null) }
+    return { type: tier, identifier: user.id, email: user.email ?? null, tierExpiresAt: tier === 'free' ? null : (profile?.tier_expires_at ?? null), ipHash }
   }
 
   const cookieStore = await cookies()
   const guestId = cookieStore.get('guest_id')?.value
   if (!guestId) throw new Error('Guest ID tidak ditemukan')
 
-  return { type: 'guest' as TierType, identifier: guestId, email: null, tierExpiresAt: null }
+  return { type: 'guest' as TierType, identifier: guestId, email: null, tierExpiresAt: null, ipHash }
 }
 
-// Hitung total soal yang sudah digenerate hari ini
-export async function checkQuota(identity: { type: TierType; identifier: string }) {
+// Hitung total soal yang sudah digenerate hari ini. Untuk tamu, dihitung
+// dari baris yang cocok guest_token ATAU ip_hash -- guest_id cookie
+// trivial di-reset (clear cookie/incognito), tapi jaringan (IP) yang sama
+// tetap kena kuota gabungan supaya tidak bisa generate berulang cuma
+// dengan buka tab baru/incognito (lihat src/utils/ip.ts, migration 0009).
+export async function checkQuota(identity: { type: TierType; identifier: string; ipHash?: string | null }) {
   const limits = await getDynamicTierLimits()
   const limit = limits[identity.type]
 
@@ -94,17 +121,25 @@ export async function checkQuota(identity: { type: TierType; identifier: string 
   }
 
   const admin = createAdminClient()
-  const column = identity.type === 'guest' ? 'guest_token' : 'user_id'
 
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
 
-  const { data, error } = await admin
+  let query = admin
     .from('usage_logs')
     .select('questions_count')
-    .eq(column, identity.identifier)
     .eq('status', 'success')
     .gte('created_at', startOfDay.toISOString())
+
+  if (identity.type === 'guest') {
+    query = identity.ipHash
+      ? query.or(`guest_token.eq.${identity.identifier},ip_hash.eq.${identity.ipHash}`)
+      : query.eq('guest_token', identity.identifier)
+  } else {
+    query = query.eq('user_id', identity.identifier)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -113,7 +148,7 @@ export async function checkQuota(identity: { type: TierType; identifier: string 
 }
 
 export async function logUsage(
-  identity: { type: TierType; identifier: string },
+  identity: { type: TierType; identifier: string; ipHash?: string | null },
   options: {
     action?: string
     tokensUsed?: number
@@ -126,6 +161,7 @@ export async function logUsage(
 
   await admin.from('usage_logs').insert({
     [column]: identity.identifier,
+    ip_hash: identity.ipHash ?? null,
     action: options.action ?? 'generate',
     tokens_used: options.tokensUsed ?? 0,
     questions_count: options.questionsCount ?? 1,

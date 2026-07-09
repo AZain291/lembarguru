@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
-import { getIdentity, checkQuota, getDynamicTierLimits } from '@/utils/usage'
+import { getIdentity, checkQuota, getDynamicTierLimits, getEnabledTools } from '@/utils/usage'
 import { createAdminClient } from '@/utils/supabase/admin'
 
 export async function GET() {
@@ -10,6 +10,7 @@ export async function GET() {
     const quota = await checkQuota(identity)
     const limits = await getDynamicTierLimits()
     const limit = limits[identity.type]
+    const enabledTools = await getEnabledTools(identity.type)
 
     const remainingQuota = quota.max === null ? null : Math.max(0, quota.max - quota.used)
     const sliderMax = remainingQuota === null
@@ -64,6 +65,7 @@ export async function GET() {
       tierExpiresAt: identity.tierExpiresAt,
       name,
       phone,
+      enabledTools,
     })
   } catch (err) {
     console.error('Usage error:', err)

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 
-export default function LoginPage() {
+function LoginInner() {
   const [mode, setMode]         = useState<'login' | 'register'>('login')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
@@ -14,6 +14,10 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
   const router   = useRouter()
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  // Kalau datang dari halaman yang butuh login (mis. /referral), kembali ke
+  // sana setelah berhasil masuk -- bukan selalu ke homepage.
+  const redirectTo = searchParams.get('redirect') || '/'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -49,7 +53,7 @@ export default function LoginPage() {
         } catch {
           // kalau gagal cek admin, lanjut ke homepage biasa
         }
-        router.push(isAdmin ? '/admin' : '/')
+        router.push(isAdmin ? '/admin' : redirectTo)
         router.refresh()
       }
     }
@@ -129,5 +133,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: '#f5f4f0' }} />}>
+      <LoginInner />
+    </Suspense>
   )
 }

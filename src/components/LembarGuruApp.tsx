@@ -8,6 +8,7 @@ import { TEACHER_TOOLS } from "@/lib/teacherTools";
 import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
 import { getMapelOptions, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
+import ReferralBanner from "@/components/ReferralBanner";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -58,6 +59,7 @@ interface UsageData {
   tierExpiresAt?: string | null;
   name?: string | null;
   phone?: string | null;
+  enabledTools?: string[] | null;
 }
 
 interface PromoData {
@@ -188,6 +190,7 @@ export default function LembarGuruApp() {
   const [view, setView] = useState<View>("generate");
   const [usage, setUsage] = useState<UsageData>({ tier:"guest", email:null, used:0, max:3, maxSoal:5, remaining:3 });
   const [usageReady, setUsageReady] = useState(false);
+  const [referral, setReferral] = useState<{ code:string; successCount:number; totalReward:number; unpaidReward:number; commissionPercent:number } | null>(null);
 
   // Form state
   const [kurikulum, setKurikulum] = useState("Kurikulum Merdeka");
@@ -345,6 +348,16 @@ export default function LembarGuruApp() {
   const used = usage.used;
   const maxGen = usage.max;
   const pct = maxGen ? Math.round((used / maxGen) * 100) : 0;
+
+  // Muat kode referral + ringkasan reward sekali saat "Akun Saya" pertama
+  // kali dibuka (tidak perlu untuk tamu) -- lihat /api/referral/me.
+  useEffect(() => {
+    if (view !== "account" || tier === "guest" || referral) return;
+    fetch("/api/referral/me")
+      .then(r => r.json())
+      .then(d => { if (d.code) setReferral(d); })
+      .catch(() => {});
+  }, [view, tier]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isMixed   = false;
   const isPgEssay  = qtype === "pg_essay";
@@ -601,6 +614,20 @@ export default function LembarGuruApp() {
               ))}
             </div>
 
+            {/* Referral */}
+            {referral && (
+              <div style={{ marginBottom:20 }}>
+                <h3 style={{ fontSize:13, fontWeight:700, color:C.textSecondary, marginBottom:10, textTransform:"uppercase", letterSpacing:".06em" }}>Ajak Rekan Guru</h3>
+                <ReferralBanner
+                  kodeReferral={referral.code}
+                  jumlahBerhasil={referral.successCount}
+                  totalReward={referral.totalReward}
+                  unpaidReward={referral.unpaidReward}
+                  commissionPercent={referral.commissionPercent}
+                />
+              </div>
+            )}
+
             {/* Actions */}
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               {!isPro && (
@@ -753,24 +780,27 @@ export default function LembarGuruApp() {
                 )}
               </div>
 
-              {kurikulum === "Kurikulum Merdeka" && (
-                <div style={{ marginBottom:12 }}>
-                  <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>Tingkat Kesulitan</label>
-                  <select value={difficulty} onChange={e => setDifficulty(e.target.value)} style={{ ...ss, maxWidth:200 }}>
-                    {DIFFICULTY.map(d => <option key={d}>{d}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {isSD && (
-                <div style={{ marginBottom:12 }}>
-                  <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
-                    Tema Pembelajaran <span style={{ fontWeight:400, color:C.textMuted }}>(opsional, tematik SD)</span>
-                  </label>
-                  <select value={tema} onChange={e => setTema(e.target.value)} style={ss}>
-                    <option value="">Tanpa tema (soal per mata pelajaran)</option>
-                    {(SD_TEMA[kelas] ?? []).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+              {(kurikulum === "Kurikulum Merdeka" || isSD) && (
+                <div style={{ display:"grid", gridTemplateColumns: kurikulum === "Kurikulum Merdeka" && isSD ? "1fr 1fr" : "1fr", gap:12, marginBottom:12 }}>
+                  {kurikulum === "Kurikulum Merdeka" && (
+                    <div>
+                      <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>Tingkat Kesulitan</label>
+                      <select value={difficulty} onChange={e => setDifficulty(e.target.value)} style={ss}>
+                        {DIFFICULTY.map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {isSD && (
+                    <div>
+                      <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+                        Tema Pembelajaran <span style={{ fontWeight:400, color:C.textMuted }}>(opsional, tematik SD)</span>
+                      </label>
+                      <select value={tema} onChange={e => setTema(e.target.value)} style={ss}>
+                        <option value="">Tanpa tema (soal per mata pelajaran)</option>
+                        {(SD_TEMA[kelas] ?? []).map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1194,33 +1224,51 @@ export default function LembarGuruApp() {
                 justifyContent:"center",
                 gap:8,
               }}>
-                {TEACHER_TOOLS.map(tool => (
-                  <Link
-                    key={tool.slug}
-                    href={`/tools/${tool.slug}`}
-                    prefetch={true}
-                    title={tool.desc}
-                    style={{
-                      display:"flex", flexDirection:"column", alignItems:"center",
-                      justifyContent:"center", gap:8, minHeight:118,
-                      background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
-                      padding:"7px 4px", cursor:"pointer", position:"relative" as const,
-                      flex:"1 1 118px", maxWidth:156, textDecoration:"none",
-                    }}
-                  >
-                    {tool.isNew && (
-                      <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:800, background:"#059669", color:"#fff", padding:"1px 5px", borderRadius:4, lineHeight:1.4 }}>
-                        BARU
+                {TEACHER_TOOLS.map(tool => {
+                  const toolEnabled = !usage.enabledTools || usage.enabledTools.includes(tool.slug);
+                  const cardStyle = {
+                    display:"flex", flexDirection:"column" as const, alignItems:"center" as const,
+                    justifyContent:"center" as const, gap:8, minHeight:118,
+                    background:C.inputBg, border:`1px solid ${C.border}`, borderRadius:12,
+                    padding:"7px 4px", cursor: toolEnabled ? "pointer" : "not-allowed", position:"relative" as const,
+                    flex:"1 1 118px", maxWidth:156, textDecoration:"none",
+                    opacity: toolEnabled ? 1 : 0.45,
+                  };
+                  const inner = (
+                    <>
+                      {tool.isNew && toolEnabled && (
+                        <span style={{ position:"absolute", top:6, right:6, fontSize:8, fontWeight:800, background:"#059669", color:"#fff", padding:"1px 5px", borderRadius:4, lineHeight:1.4 }}>
+                          BARU
+                        </span>
+                      )}
+                      <span style={{ color: toolEnabled ? C.accent : C.textMuted }}>
+                        <ToolIcon slug={tool.slug} width={46} height={46} strokeWidth={1} />
                       </span>
-                    )}
-                    <span style={{ color:C.accent }}>
-                      <ToolIcon slug={tool.slug} width={46} height={46} strokeWidth={1} />
-                    </span>
-                    <span style={{ fontSize:11, fontWeight:600, color:C.textPrimary, textAlign:"center" as const, lineHeight:1.25 }}>
-                      {tool.label}
-                    </span>
-                  </Link>
-                ))}
+                      <span style={{ fontSize:11, fontWeight:600, color: toolEnabled ? C.textPrimary : C.textMuted, textAlign:"center" as const, lineHeight:1.25 }}>
+                        {tool.label}
+                      </span>
+                    </>
+                  );
+
+                  if (!toolEnabled) {
+                    return (
+                      <div
+                        key={tool.slug}
+                        title={`${tool.label} tidak tersedia untuk paket ${tierInfo.label} — upgrade untuk akses`}
+                        onClick={() => setModal("upgrade")}
+                        style={cardStyle}
+                      >
+                        {inner}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link key={tool.slug} href={`/tools/${tool.slug}`} prefetch={true} title={tool.desc} style={cardStyle}>
+                      {inner}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1237,10 +1285,12 @@ export default function LembarGuruApp() {
           {/* Links */}
           <div style={{ display:"flex", gap:24, flexWrap:"wrap", justifyContent:"center" }}>
             {[
-              { href:"/blog",    label:"Blog" },
-              { href:"/about",   label:"Tentang Kami" },
-              { href:"/contact", label:"Kontak" },
-              { href:"/terms",   label:"Syarat & Ketentuan" },
+              { href:"/blog",     label:"Blog" },
+              { href:"/about",    label:"Tentang Kami" },
+              { href:"/harga",    label:"Harga" },
+              { href:"/referral", label:"Referral" },
+              { href:"/contact",  label:"Kontak" },
+              { href:"/terms",    label:"Syarat & Ketentuan" },
             ].map(link => (
               <a key={link.href} href={link.href} style={{ fontSize:13, color:C.textSecondary, textDecoration:"none" }}>
                 {link.label}
