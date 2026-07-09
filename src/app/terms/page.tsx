@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Syarat & Ketentuan — LembarGuru',
     description: 'Syarat dan ketentuan penggunaan layanan LembarGuru.',
-    url: 'https://lembarguru.com/terms',
+    url: 'https://www.lembarguru.com/terms',
   },
 }
 

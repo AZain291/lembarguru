@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Blog LembarGuru — Kiat Mengajar & Mendidik untuk Guru Indonesia',
     description: 'Artikel pendukung guru: kiat sukses mendidik, cara mengajar efektif, dan cara menghadapi berbagai sifat siswa di kelas.',
-    url: 'https://lembarguru.com/blog',
+    url: 'https://www.lembarguru.com/blog',
   },
 }
 

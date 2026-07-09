@@ -1,10 +1,12 @@
 import { BLOG_ARTICLES } from '@/lib/blog'
 
-// Non-www -- harus sama persis dengan metadataBase di layout.tsx dan
-// alternates.canonical tiap halaman. Kalau beda, Google melihat sitemap
-// menyarankan URL yang berbeda dari yang diklaim rel=canonical tiap
-// halaman ("canonical double" / duplicate content).
-const BASE_URL = 'https://lembarguru.com'
+// www -- harus sama persis dengan metadataBase di layout.tsx dan
+// alternates.canonical tiap halaman, DAN sama dengan arah redirect yang
+// sudah dipaksakan Vercel (non-www -> www, di level platform, bukan di
+// next.config.js -- lihat catatan di sana). Kalau beda, Google melihat
+// sitemap menyarankan URL yang berbeda dari yang diklaim rel=canonical
+// tiap halaman ("canonical double" / duplicate content).
+const BASE_URL = 'https://www.lembarguru.com'
 
 export default function sitemap() {
   const staticPages = [

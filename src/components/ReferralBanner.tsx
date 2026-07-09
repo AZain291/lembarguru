@@ -21,7 +21,7 @@ export default function ReferralBanner({ kodeReferral, jumlahBerhasil, totalRewa
   const [copied, setCopied] = useState(false);
   const link = typeof window !== "undefined"
     ? `${window.location.origin}/register?ref=${kodeReferral}`
-    : `https://lembarguru.com/register?ref=${kodeReferral}`;
+    : `https://www.lembarguru.com/register?ref=${kodeReferral}`;
 
   useEffect(() => {
     if (!copied) return;

@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     google: '0wuqU3shNusJpq6eKK5hriQM3OtT4n6BvdcFiSN_EhQ',
      // isi dengan kode dari Search Console
   },
-  metadataBase: new URL('https://lembarguru.com'),
+  metadataBase: new URL('https://www.lembarguru.com'),
     alternates: {
     canonical: '/',
   },
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LembarGuru — Generator Soal untuk Guru Indonesia',
     description: 'Buat soal pilihan ganda, HOTS, esai untuk SD, SMP, SMA dalam hitungan detik.',
-    url: 'https://lembarguru.com',
+    url: 'https://www.lembarguru.com',
     siteName: 'LembarGuru',
     locale: 'id_ID',
     type: 'website',
@@ -38,7 +38,7 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'LembarGuru',
-  url: 'https://lembarguru.com',
+  url: 'https://www.lembarguru.com',
   description: 'Generator soal untuk guru Indonesia',
   applicationCategory: 'EducationApplication',
   operatingSystem: 'Web',

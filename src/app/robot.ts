@@ -8,6 +8,6 @@ export default function robots() {
       // budget dan mencegah URL-nya muncul di hasil pencarian.
       disallow: ['/admin', '/api'],
     },
-    sitemap: 'https://lembarguru.com/sitemap.xml',
+    sitemap: 'https://www.lembarguru.com/sitemap.xml',
   }
 }

@@ -1317,7 +1317,7 @@ function SharePromoModal({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
-  const promoUrl = `https://lembarguru.com/?promo=${promo.code}`;
+  const promoUrl = `https://www.lembarguru.com/?promo=${promo.code}`;
   const disc = promo.discount_type === "percent"
     ? `${promo.discount_value}% off`
     : `Diskon Rp ${promo.discount_value.toLocaleString("id-ID")}`;
@@ -1567,6 +1567,7 @@ interface AppliedPromo {
 }
 
 function UpgradeModal({ onClose, C, tier, prefillPromo }: { onClose: () => void; C: typeof THEMES.light; tier: Tier; prefillPromo?: PromoData | null }) {
+  const router = useRouter();
   const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
   const [selectedTier, setSelectedTier] = useState<"pro" | "guru">("pro");
   const [loading, setLoading] = useState(false);
@@ -1651,7 +1652,16 @@ function UpgradeModal({ onClose, C, tier, prefillPromo }: { onClose: () => void;
     ? (appliedPromo.applies_to?.toLowerCase() === "all" || appliedPromo.applies_to?.toLowerCase() === selectedTier)
     : false;
 
+  // Belum login (tier tamu) -- jangan coba checkout, arahkan langsung ke
+  // login/daftar. redirect=/ supaya balik ke homepage (buka lagi modal
+  // upgrade dari sana) setelah berhasil masuk.
+  function goToLogin() {
+    router.push(`/login?redirect=${encodeURIComponent("/")}`);
+  }
+
   async function checkout() {
+    if (tier === "guest") { goToLogin(); return; }
+
     setLoading(true); setMsg("");
     try {
       const res = await fetch("/api/payment/create-transaction", {
@@ -1664,6 +1674,7 @@ function UpgradeModal({ onClose, C, tier, prefillPromo }: { onClose: () => void;
         }),
       });
       const data = await res.json();
+      if (res.status === 401) { goToLogin(); return; }
       if (!res.ok) { setMsg(data.error || "Gagal memproses pembayaran"); return; }
       if (data.redirect_url) window.location.href = data.redirect_url;
     } catch {
@@ -1817,7 +1828,11 @@ function UpgradeModal({ onClose, C, tier, prefillPromo }: { onClose: () => void;
           color:"#fff",
         }}
       >
-        {loading ? "Memproses…" : `Bayar ${formatRp(appliedPromo && promoApplies ? finalPrice : basePrice)}`}
+        {loading
+          ? "Memproses…"
+          : tier === "guest"
+            ? "Masuk / Daftar untuk Membayar"
+            : `Bayar ${formatRp(appliedPromo && promoApplies ? finalPrice : basePrice)}`}
       </button>
       <p style={{ fontSize:11, color:C.textMuted, textAlign:"center", marginTop:8 }}>Pembayaran aman via Midtrans · Bisa transfer bank, GoPay, QRIS</p>
     </Modal>

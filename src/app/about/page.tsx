@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Tentang LembarGuru — Asisten Soal untuk Guru Indonesia',
     description: 'Kenali misi LembarGuru dalam membantu guru Indonesia membuat soal berkualitas lebih cepat.',
-    url: 'https://lembarguru.com/about',
+    url: 'https://www.lembarguru.com/about',
   },
 }
 

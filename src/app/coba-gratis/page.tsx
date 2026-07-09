@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Coba Gratis — Generator Soal Ujian | LembarGuru',
     description: 'Coba generator soal LembarGuru tanpa perlu daftar.',
-    url: 'https://lembarguru.com/coba-gratis',
+    url: 'https://www.lembarguru.com/coba-gratis',
   },
 }
 

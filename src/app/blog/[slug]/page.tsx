@@ -17,7 +17,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     openGraph: {
       title: article.title,
       description: article.excerpt,
-      url: `https://lembarguru.com/blog/${article.slug}`,
+      url: `https://www.lembarguru.com/blog/${article.slug}`,
     },
   }
 }

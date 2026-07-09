@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Kontak LembarGuru — Hubungi Tim Kami',
     description: 'Hubungi tim LembarGuru untuk pertanyaan, laporan bug, atau feedback.',
-    url: 'https://lembarguru.com/contact',
+    url: 'https://www.lembarguru.com/contact',
   },
 }
 

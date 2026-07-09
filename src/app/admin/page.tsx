@@ -1039,7 +1039,7 @@ export default function AdminPage() {
 function AdminShareModal({ promo, onClose }: { promo: any; onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [copied, setCopied] = useState(false)
-  const promoUrl = 'https://lembarguru.com/?promo=' + promo.code
+  const promoUrl = 'https://www.lembarguru.com/?promo=' + promo.code
   const disc = promo.discount_type === 'percent'
     ? promo.discount_value + '% off'
     : 'Diskon Rp ' + Number(promo.discount_value).toLocaleString('id-ID')

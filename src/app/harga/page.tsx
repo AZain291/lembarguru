@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Harga — LembarGuru',
     description: 'Pilih paket LembarGuru yang sesuai kebutuhan Anda.',
-    url: 'https://lembarguru.com/harga',
+    url: 'https://www.lembarguru.com/harga',
   },
 }
 
