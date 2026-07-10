@@ -13,6 +13,7 @@ interface PricingTier {
   unlimited_gen: boolean;
   bank_soal_jumlah: number | null;
   bank_soal_acak: boolean | null;
+  enabled_tools: string[] | null;
 }
 
 const TOOL_COUNT = TEACHER_TOOLS.length;
@@ -87,6 +88,11 @@ export default function HargaClient() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
             {tiers.map((t) => {
               const isPro = t.tier === "pro";
+              // enabled_tools null = semua tool diizinkan (default). Tampilkan
+              // "X dari Y" cuma kalau tier ini benar-benar dibatasi admin --
+              // supaya perbedaan jumlah tool antar tier kelihatan jelas.
+              const toolCount = t.enabled_tools ? t.enabled_tools.length : TOOL_COUNT;
+              const toolsRestricted = toolCount < TOOL_COUNT;
               return (
                 <div
                   key={t.tier}
@@ -130,7 +136,7 @@ export default function HargaClient() {
                       ✅ Bank Soal: {t.tier === "guru" ? "tanpa batas" : `${t.bank_soal_jumlah ?? "-"} soal${t.bank_soal_acak ? " (diacak)" : ""}`}
                     </div>
                     <div style={{ fontSize: 13, color: "#374151", padding: "7px 10px", background: "#f5f4f0", borderRadius: 7 }}>
-                      ✅ Akses semua {TOOL_COUNT} Alat Bantu Guru
+                      {toolsRestricted ? `⚠️ ${toolCount} dari ${TOOL_COUNT} Alat Bantu Guru` : `✅ Akses semua ${TOOL_COUNT} Alat Bantu Guru`}
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: "#9ca3af", marginBottom: 20, marginTop: -12 }}>

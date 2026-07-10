@@ -31,6 +31,16 @@ export async function POST(request: NextRequest) {
       fase?: string; mixed: boolean; singleType?: string
     }
 
+    // Validasi dasar -- endpoint ini nerima JSON apa adanya dari client,
+    // kalau bentuknya rusak (mis. sesi lama di localStorage) baru ketahuan
+    // di sini dengan pesan jelas, bukan meledak samar-samar di docx builder.
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return NextResponse.json({ error: 'Tidak ada soal untuk diekspor' }, { status: 400 })
+    }
+    if (!mapel || !kelas) {
+      return NextResponse.json({ error: 'Data mapel/kelas tidak lengkap' }, { status: 400 })
+    }
+
     const typeLabel = mixed ? 'Campuran' : (singleType ?? 'Pilihan Ganda')
 
     // ── Build DOCX ─────────────────────────────────────────────────────────

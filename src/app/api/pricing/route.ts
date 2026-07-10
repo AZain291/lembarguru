@@ -14,11 +14,12 @@ export async function GET() {
   try {
     const admin = createAdminClient()
 
-    // Kolom bank_soal_* (migration 0006) di-select terpisah dari kolom
-    // dasar -- kalau migration itu belum dijalankan di suatu environment,
-    // kegagalannya tidak boleh membuat SELURUH daftar harga kosong (cuma
-    // fitur Bank Soal di kartu harga yang tidak muncul).
-    const [base, bankSoal] = await Promise.all([
+    // Kolom bank_soal_* (migration 0006) dan enabled_tools (migration 0010)
+    // di-select terpisah dari kolom dasar -- kalau migration itu belum
+    // dijalankan di suatu environment, kegagalannya tidak boleh membuat
+    // SELURUH daftar harga kosong (cuma fitur Bank Soal/jumlah tool di
+    // kartu harga yang tidak muncul).
+    const [base, bankSoal, tools] = await Promise.all([
       admin
         .from('pricing_tiers')
         .select('tier, label, price_monthly, price_yearly, max_soal, max_gen_per_day, unlimited_gen')
@@ -28,6 +29,10 @@ export async function GET() {
         .from('pricing_tiers')
         .select('tier, bank_soal_jumlah, bank_soal_acak')
         .eq('active', true),
+      admin
+        .from('pricing_tiers')
+        .select('tier, enabled_tools')
+        .eq('active', true),
     ])
 
     if (base.error) throw base.error
@@ -35,11 +40,15 @@ export async function GET() {
     const bankSoalMap = new Map(
       (bankSoal.error ? [] : bankSoal.data ?? []).map((r: any) => [r.tier, r])
     )
+    const toolsMap = new Map(
+      (tools.error ? [] : tools.data ?? []).map((r: any) => [r.tier, r])
+    )
 
     const tiers = (base.data ?? []).map((t) => ({
       ...t,
       bank_soal_jumlah: bankSoalMap.get(t.tier)?.bank_soal_jumlah ?? null,
       bank_soal_acak: bankSoalMap.get(t.tier)?.bank_soal_acak ?? null,
+      enabled_tools: toolsMap.get(t.tier)?.enabled_tools ?? null,
     }))
 
     return NextResponse.json(

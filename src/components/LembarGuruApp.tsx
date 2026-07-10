@@ -37,6 +37,7 @@ interface ResultData {
   topik: string;
   kurikulum: string;
   fase: string | null;
+  difficulty?: string;
   mixed: boolean;
   mixedConfig?: MixedConfig;
   singleType?: string;
@@ -140,6 +141,15 @@ function parseQuestions(text: string, defaultType = "pilihan_ganda"): Question[]
   const qs: Question[] = [];
   let cur: Question | null = null;
   let curType = defaultType;
+  // Nomor soal berikutnya yang sah -- soal ber-AI kadang menulis daftar
+  // langkah bernomor DI DALAM teks soal sendiri (mis. "1. Masukkan dua
+  // bilangan\n2. Jumlahkan...\n3. Tampilkan..." sebagai bagian dari stem
+  // soal tentang flowchart/algoritma). Baris begitu juga cocok pola
+  // "angka." tapi nomornya mengulang dari 1, bukan lanjutan penomoran
+  // soal -- jadi HANYA baris dengan nomor PERSIS sama dengan yang
+  // diharapkan berikutnya yang dianggap awal soal baru; selain itu
+  // diperlakukan sebagai lanjutan teks soal yang sedang berjalan.
+  let expectedNum = 1;
 
   for (const line of lines) {
     // Detect tipe section header (untuk campuran)
@@ -151,13 +161,15 @@ function parseQuestions(text: string, defaultType = "pilihan_ganda"): Question[]
       else if (s.includes("isian")) curType = "isian";
       else if (s.includes("benar")) curType = "benar_salah";
       else if (s.includes("hots")) curType = "hots";
+      expectedNum = 1; // penomoran soal reset tiap ganti tipe (mode campuran)
       continue;
     }
 
     const qm = line.match(/^(\d+)[.)]\s+(.+)/);
-    if (qm) {
+    if (qm && Number(qm[1]) === expectedNum) {
       if (cur) qs.push(cur);
       cur = { text: qm[2], options: [], answer: "", pembahasan: "", type: curType };
+      expectedNum++;
       continue;
     }
     if (!cur) continue;
@@ -171,9 +183,14 @@ function parseQuestions(text: string, defaultType = "pilihan_ganda"): Question[]
     const pm = line.match(/^(?:pembahasan|penjelasan|alasan|diskusi)\s*:?\s*(.+)/i);
     if (pm) { cur.pembahasan = pm[1].trim(); continue; }
 
-    // Append ke pembahasan jika sudah ada pembahasan sebelumnya
-    if (cur.pembahasan && !om && !jm) {
+    if (cur.pembahasan) {
+      // Sudah masuk bagian pembahasan -- baris lain (termasuk yang tadinya
+      // salah dianggap "soal baru") disambung ke situ.
       cur.pembahasan += " " + line;
+    } else if (!cur.options.length && !cur.answer) {
+      // Masih di bagian stem (belum ada opsi/jawaban) -- termasuk baris
+      // daftar bernomor yang gagal cocok expectedNum di atas.
+      cur.text += " " + line;
     }
   }
   if (cur) qs.push(cur);
@@ -188,7 +205,7 @@ function formatRp(n: number) {
 export default function LembarGuruApp() {
   const [theme, setTheme] = useState<Theme>("light");
   const [view, setView] = useState<View>("generate");
-  const [usage, setUsage] = useState<UsageData>({ tier:"guest", email:null, used:0, max:3, maxSoal:5, remaining:3 });
+  const [usage, setUsage] = useState<UsageData>({ tier:"guest", email:null, used:0, max:10, maxSoal:5, remaining:10 });
   const [usageReady, setUsageReady] = useState(false);
   const [referral, setReferral] = useState<{ code:string; successCount:number; totalReward:number; unpaidReward:number; commissionPercent:number } | null>(null);
 
@@ -374,10 +391,22 @@ export default function LembarGuruApp() {
   async function generateSoal() {
     if (remaining !== null && remaining <= 0) { setModal("limit"); return; }
     if (isMixed && totalMixedQ === 0) { setError("Isi minimal 1 soal di konfigurasi campuran."); return; }
+    if (isPgEssay && totalPgEssayQ === 0) { setError("Isi minimal 1 soal Pilihan Ganda atau Esai."); return; }
 
     setLoading(true); setResult(null); setError(""); setShowAnswerKey(false);
 
     const finalTopik = tema ? (topik ? `Tema: ${tema} — ${topik}` : `Tema: ${tema}`) : topik;
+
+    // "PG + Essay" bukan tipe soal tersendiri di backend -- diteruskan
+    // sebagai mode campuran (tipe:"campuran") dengan mixedConfig cuma
+    // berisi pilihan_ganda+essay. Sebelumnya "tipe" dikirim sebagai label
+    // "PG + Essay" apa adanya, yang tidak dikenali typeFormatMap di
+    // /api/generate/route.ts (diam-diam jatuh ke format Pilihan Ganda
+    // saja) DAN pgCount/essayCount tidak pernah ikut terkirim -- itu
+    // sebabnya hasilnya melenceng jauh dari rasio yang diminta.
+    const pgEssayConfig: MixedConfig = { pilihan_ganda: pgCount, essay: essayCount, benar_salah: 0, isian: 0, hots: 0 };
+    const sendAsCampuran = isMixed || isPgEssay;
+    const effectiveMixedConfig = isMixed ? mixedConfig : isPgEssay ? pgEssayConfig : null;
 
     try {
       const res = await fetch("/api/generate", {
@@ -386,9 +415,9 @@ export default function LembarGuruApp() {
         body: JSON.stringify({
           mapel, kelas, topik: finalTopik, difficulty, kurikulum,
           fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
-          tipe: isMixed ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
+          tipe: sendAsCampuran ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
           jumlahSoal: limitedNumQ,
-          mixedConfig: isMixed ? mixedConfig : null,
+          mixedConfig: effectiveMixedConfig,
         }),
       });
 
@@ -398,15 +427,16 @@ export default function LembarGuruApp() {
       if (data.error === "max_soal_exceeded") { setError(`Maksimal ${data.maxSoal} soal untuk tier ${T.label}.`); return; }
       if (!data.success) throw new Error(data.error || "Gagal");
 
-      const qs = parseQuestions(data.hasil, isMixed ? "campuran" : qtype);
+      const qs = parseQuestions(data.hasil, sendAsCampuran ? "campuran" : qtype);
       if (qs.length === 0) throw new Error("Parse gagal — respons kosong");
 
       setResult({
         questions: qs, mapel, kelas, topik: finalTopik, kurikulum,
         fase: kurikulum === "Kurikulum Merdeka" ? fase : null,
-        mixed: isMixed,
-        mixedConfig: isMixed ? mixedConfig : undefined,
-        singleType: isMixed ? undefined : TYPES.find(t => t.v === qtype)?.l,
+        difficulty,
+        mixed: sendAsCampuran,
+        mixedConfig: effectiveMixedConfig ?? undefined,
+        singleType: sendAsCampuran ? undefined : TYPES.find(t => t.v === qtype)?.l,
       });
 
       setUsage(prev => ({ ...prev, used: data.used, tier: data.tier ?? prev.tier, remaining: data.remaining ?? prev.remaining, sliderMax: data.sliderMax ?? prev.sliderMax }));
@@ -420,8 +450,19 @@ export default function LembarGuruApp() {
   function copyResult() {
     if (!result) return;
     const questions = result.questions;
-    // Soal saja dulu
-    let text = questions.map((q, i) => {
+
+    // Header: mapel, kelas, tingkat kesulitan, topik -- sebelumnya tidak
+    // ikut tersalin sama sekali, cuma daftar soal apa adanya.
+    const headerLines = [
+      `Mata Pelajaran: ${result.mapel}`,
+      `Kelas: ${result.kelas}`,
+      result.difficulty ? `Tingkat Kesulitan: ${result.difficulty}` : null,
+      result.topik ? `Topik: ${result.topik}` : null,
+    ].filter(Boolean);
+    let text = headerLines.join("\n") + "\n\n";
+
+    // Soal
+    text += questions.map((q, i) => {
       let s = `${i + 1}. ${q.text}\n`;
       if (q.options.length) s += q.options.map(o => `   ${o.k}. ${o.t}`).join("\n") + "\n";
       return s;
@@ -462,7 +503,14 @@ export default function LembarGuruApp() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(result),
       });
-      if (!res.ok) throw new Error("Gagal");
+      if (!res.ok) {
+        // Sebelumnya selalu dilempar sebagai "Gagal" generik, jadi gagal
+        // auth/tier dan gagal server (crash saat generate docx) tidak bisa
+        // dibedakan dari toast-nya. Sekarang pesan asli dari server ikut
+        // ditampilkan supaya penyebabnya jelas.
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Gagal (${res.status})`);
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -473,8 +521,8 @@ export default function LembarGuruApp() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast("File Word berhasil diunduh!");
-    } catch {
-      showToast("Gagal membuat file Word. Coba lagi.");
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? `Gagal membuat file Word: ${e.message}` : "Gagal membuat file Word. Coba lagi.");
     } finally {
       setDownloading(false);
     }
@@ -484,7 +532,8 @@ export default function LembarGuruApp() {
     const supabase = createClient();
     await supabase.auth.signOut();
     setModal(null);
-    setUsage({ tier:"guest", email:null, used:0, max:3, maxSoal:5, remaining:3 });
+    setUsage({ tier:"guest", email:null, used:0, max:10, maxSoal:5, remaining:10 });
+    setUsageReady(false);
     setView("generate");
     router.push("/");
     router.refresh();
@@ -642,6 +691,17 @@ export default function LembarGuruApp() {
                 Keluar
               </button>
             </div>
+
+            {/* Zona Berbahaya */}
+            <div style={{ marginTop:28, paddingTop:20, borderTop:`1px solid ${C.border}` }}>
+              <h3 style={{ fontSize:12, fontWeight:700, color:"#ef4444", marginBottom:8, textTransform:"uppercase", letterSpacing:".06em" }}>Zona Berbahaya</h3>
+              <p style={{ fontSize:12.5, color:C.textMuted, marginBottom:10, lineHeight:1.6 }}>
+                Menghapus akun bersifat permanen — semua data (langganan, kode referral, riwayat) hilang dan tidak bisa dikembalikan.
+              </p>
+              <button onClick={() => setModal("deleteAccount")} style={{ background:"transparent", border:"1px solid #ef4444", borderRadius:8, padding:"9px 18px", fontWeight:600, fontSize:13, cursor:"pointer", color:"#ef4444" }}>
+                🗑️ Hapus Akun Saya
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -670,8 +730,10 @@ export default function LembarGuruApp() {
               ))}
             </div>
 
-            {/* Kuota bar */}
-            {!isPro && maxGen && (
+            {/* Kuota bar -- ditahan sampai usageReady supaya tidak sempat
+                menampilkan angka placeholder yang salah sebelum /api/usage
+                selesai (lihat initial state UsageData di atas). */}
+            {usageReady && !isPro && maxGen && (
               <div style={{ maxWidth:300, margin:"0 auto", background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:10, padding:"10px 14px" }}>
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:C.textSecondary, marginBottom:6 }}>
                   <span>Soal hari ini</span>
@@ -973,22 +1035,23 @@ export default function LembarGuruApp() {
                       ["--tx" as any]: `${s.tx}px`, ["--ty" as any]: `${s.ty}px`,
                     }} />
                   ))}
-                  <div className={loading ? undefined : "neon-border-wrap"} style={{ width:"100%", maxWidth:320 }}>
+                  <div className={`neon-border-wrap${loading ? " neon-border-wrap--charging" : ""}`} style={{ width:"100%", maxWidth:320 }}>
                     <button
                       onClick={() => { burstMagic(); generateSoal(); }}
                       disabled={loading || (remaining !== null && remaining <= 0) || (isPgEssay && totalPgEssayQ === 0)}
+                      className={loading ? "magic-btn-pulse magic-btn-sheen" : undefined}
                       style={{
                         width:"100%", background:"#2563eb", color:"#fff",
                         border:"none", borderRadius:10, padding:"12px 28px", fontWeight:700, fontSize:14,
-                        cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.6 : 1,
-                        position:"relative" as const, zIndex:1,
+                        cursor:loading ? "not-allowed" : "pointer", opacity:loading ? 0.85 : 1,
+                        position:"relative" as const, zIndex:1, overflow:"hidden",
                         transition:"transform .15s ease",
                       }}
                       onMouseDown={e => { e.currentTarget.style.transform = "scale(0.97)" }}
                       onMouseUp={e => { e.currentTarget.style.transform = "scale(1)" }}
                       onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)" }}
                     >
-                      {loading ? "Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
+                      {loading ? "✨ Membuat soal…" : `⚡ Generate ${limitedNumQ} Soal`}
                     </button>
                   </div>
                   </>
@@ -1025,11 +1088,20 @@ export default function LembarGuruApp() {
               );
             })()}
 
-            {/* LOADING */}
+            {/* LOADING — "magic orb": glow + dua cincin conic-gradient berlawanan
+                arah + percikan mengorbit, bahasa visual sama dengan cincin
+                neon tombol Generate supaya terasa menyambung. */}
             {loading && (
-              <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:14, padding:"2.5rem", textAlign:"center" }}>
-                <div style={{ width:38, height:38, border:`3px solid ${C.track}`, borderTopColor:C.accent, borderRadius:"50%", margin:"0 auto 14px", animation:"spin 0.75s linear infinite" }} />
-                <p style={{ fontWeight:700, color:C.textPrimary }}>Soal sedang disusun…</p>
+              <div style={{ background:C.cardBg, border:`1px solid ${C.border}`, borderRadius:14, padding:"2.5rem", textAlign:"center", animation:"fadeIn .3s ease" }}>
+                <div style={{ position:"relative", width:56, height:56, margin:"0 auto 18px" }}>
+                  <div className="magic-orb-glow" />
+                  <div className="magic-orb-ring" />
+                  <div className="magic-orb-ring magic-orb-ring--slow" />
+                  <div className="magic-orb-spark" style={{ ["--orbit-r" as any]:"27px", animationDelay:"0s" }} />
+                  <div className="magic-orb-spark" style={{ ["--orbit-r" as any]:"27px", animationDelay:"-.45s" }} />
+                  <div className="magic-orb-spark" style={{ ["--orbit-r" as any]:"27px", animationDelay:"-.9s" }} />
+                </div>
+                <p className="shimmer-text" style={{ fontWeight:700, color:C.textPrimary, display:"inline-block" }}>Soal sedang disusun…</p>
                 <p style={{ fontSize:12, color:C.textMuted, marginTop:6 }}>Biasanya membutuhkan 5–15 detik</p>
               </div>
             )}
@@ -1172,7 +1244,7 @@ export default function LembarGuruApp() {
           <h2 style={{ fontSize:19, fontWeight:800, marginBottom:8, color:C.textPrimary }}>Kuota Habis</h2>
           <p style={{ fontSize:13, color:C.textSecondary, marginBottom:20 }}>
             {tier === "guest"
-              ? `Kuota coba gratis (${usage.max ?? 3}×) sudah habis. Daftar akun gratis untuk ${usage.maxGenFree ?? TIER_DEFAULTS.free.maxGen}× generate/hari & maks. ${usage.maxSoalFree ?? TIER_DEFAULTS.free.maxQ} soal per sesi.`
+              ? `Kuota coba gratis (${usage.max ?? 10}×) sudah habis. Daftar akun gratis untuk ${usage.maxGenFree ?? TIER_DEFAULTS.free.maxGen}× generate/hari & maks. ${usage.maxSoalFree ?? TIER_DEFAULTS.free.maxQ} soal per sesi.`
               : tier === "free"
               ? `Kuota harian (${usage.max ?? TIER_DEFAULTS.free.maxGen}×) sudah habis. Upgrade ke Pro untuk generate tanpa batas.`
               : "Kuota hari ini telah habis."}
@@ -1181,6 +1253,10 @@ export default function LembarGuruApp() {
             {tier === "guest" ? "Daftar Gratis" : "Upgrade ke Pro"}
           </button>
         </Modal>
+      )}
+
+      {modal === "deleteAccount" && (
+        <DeleteAccountModal onClose={() => setModal(null)} C={C} />
       )}
 
       {toast && (
@@ -1555,6 +1631,63 @@ function Modal({ children, onClose, C }: { children: React.ReactNode; onClose: (
         {children}
       </div>
     </div>
+  );
+}
+
+function DeleteAccountModal({ onClose, C }: { onClose: () => void; C: typeof THEMES.light }) {
+  const router = useRouter();
+  const [confirmText, setConfirmText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const canDelete = confirmText.trim().toUpperCase() === "HAPUS AKUN";
+
+  async function handleDelete() {
+    if (!canDelete) return;
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/account/delete", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || "Gagal menghapus akun."); setLoading(false); return; }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Gagal menghubungi server, coba lagi.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} C={C}>
+      <h2 style={{ fontSize:19, fontWeight:800, marginBottom:8, color:"#ef4444" }}>🗑️ Hapus Akun Permanen</h2>
+      <p style={{ fontSize:13, color:C.textSecondary, marginBottom:14, lineHeight:1.6 }}>
+        Tindakan ini <strong>tidak bisa dibatalkan</strong>. Semua data Anda akan dihapus permanen: langganan/paket aktif, kode & reward referral, dan riwayat pemakaian.
+      </p>
+      <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
+        Ketik <strong>HAPUS AKUN</strong> untuk konfirmasi
+      </label>
+      <input
+        type="text"
+        value={confirmText}
+        onChange={e => setConfirmText(e.target.value)}
+        placeholder="HAPUS AKUN"
+        style={{ width:"100%", boxSizing:"border-box", padding:"9px 12px", border:`1px solid ${C.inputBorder}`, borderRadius:8, fontSize:13, background:C.inputBg, color:C.textPrimary, marginBottom:12 }}
+      />
+      {error && <p style={{ fontSize:12, color:"#ef4444", marginBottom:10 }}>{error}</p>}
+      <div style={{ display:"flex", gap:8 }}>
+        <button onClick={onClose} style={{ flex:1, background:"transparent", border:`1px solid ${C.inputBorder}`, borderRadius:10, padding:12, fontWeight:600, fontSize:13, cursor:"pointer", color:C.textPrimary }}>
+          Batal
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={!canDelete || loading}
+          style={{ flex:1, background:"#ef4444", color:"#fff", border:"none", borderRadius:10, padding:12, fontWeight:700, fontSize:13, cursor: canDelete && !loading ? "pointer" : "not-allowed", opacity: canDelete && !loading ? 1 : 0.5 }}
+        >
+          {loading ? "Menghapus…" : "Hapus Akun Saya"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

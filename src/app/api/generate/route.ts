@@ -89,6 +89,7 @@ PENTING – Format output wajib diikuti:
 - Jangan gunakan markdown (tidak ada **, #, --)
 - Setiap tipe soal diawali dengan heading: # [NAMA TIPE] (contoh: # PILIHAN GANDA)
 - Penomoran ulang dari 1 untuk setiap tipe
+- Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
 - Langsung mulai tanpa pengantar apapun\n\n`
 
     for (const [key, count] of Object.entries(mixedConfig)) {
@@ -121,6 +122,7 @@ PENTING:
 - Langsung mulai dari nomor 1 tanpa judul atau pengantar
 - Tulis dalam teks polos murni
 - Kunci jawaban dan pembahasan WAJIB disertakan sesuai format di atas
+- Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
 
 Buat soal sekarang:`
 }

@@ -9,13 +9,22 @@ export function splitSoalBlocks(text: string): string[] {
   const lines = text.split('\n').map((l) => l.replace(/\*\*/g, '').trim())
   const blocks: string[] = []
   let current: string[] = []
+  // Sama seperti parseQuestions() di LembarGuruApp.tsx -- soal kadang
+  // menulis daftar langkah bernomor DI DALAM teks soal sendiri (mis. soal
+  // flowchart/algoritma dengan stem "1. Masukkan dua bilangan\n2. ..."),
+  // yang juga cocok pola "angka." tapi nomornya mengulang dari 1. Hanya
+  // baris dengan nomor PERSIS sama dengan yang diharapkan berikutnya yang
+  // dianggap batas blok baru; selain itu disambung ke blok yang berjalan.
+  let expectedNum = 1
 
   for (const line of lines) {
     if (!line) continue
-    if (/^#+\s*/.test(line)) continue // lewati heading tipe soal (mode campuran)
-    if (/^\d+[.)]\s+/.test(line)) {
+    if (/^#+\s*/.test(line)) { expectedNum = 1; continue } // lewati heading tipe soal (mode campuran), reset penomoran
+    const m = line.match(/^(\d+)[.)]\s+(.+)/)
+    if (m && Number(m[1]) === expectedNum) {
       if (current.length) blocks.push(current.join('\n'))
-      current = [line.replace(/^\d+[.)]\s+/, '')]
+      current = [m[2]]
+      expectedNum++
     } else if (current.length) {
       current.push(line)
     }
