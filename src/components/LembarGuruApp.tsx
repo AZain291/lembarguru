@@ -582,7 +582,7 @@ export default function LembarGuruApp() {
           {tier !== "guest" && (
             <>
               <button onClick={() => setView(view === "account" ? "generate" : "account")} style={{ background:view === "account" ? C.accentBg : "transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 12px", fontWeight:600, fontSize:13, cursor:"pointer", color:view === "account" ? C.accentText : C.textSecondary }}>
-                👤 Akun
+                👤 {usage.name ? usage.name.split(" ")[0] : "Akun"}
               </button>
               <button onClick={handleLogout} style={{ background:"transparent", border:`1px solid ${C.inputBorder}`, borderRadius:8, padding:"7px 12px", fontWeight:600, fontSize:13, cursor:"pointer", color:"#ef4444" }}>
                 Keluar
@@ -1061,8 +1061,16 @@ export default function LembarGuruApp() {
 
             {/* ── ARTIKEL BLOG — carousel 2 baris, arah berlawanan, tak berhenti ── */}
             {(() => {
-              const baris1 = [...BLOG_ARTICLES.slice(0, 3), ...BLOG_ARTICLES.slice(0, 3)];
-              const baris2 = [...BLOG_ARTICLES.slice(3), ...BLOG_ARTICLES.slice(3)];
+              const baris1Src = BLOG_ARTICLES.slice(0, 3);
+              const baris2Src = BLOG_ARTICLES.slice(3);
+              const baris1 = [...baris1Src, ...baris1Src];
+              const baris2 = [...baris2Src, ...baris2Src];
+              // Durasi baris bawah diskalakan proporsional ke jumlah artikelnya
+              // supaya kecepatan gerak (px/detik) sama dengan baris atas --
+              // baris bawah punya jauh lebih banyak artikel jadi butuh durasi
+              // lebih panjang untuk menempuh jarak yang sama per detik.
+              const DURASI_BARIS1_S = 26;
+              const durasiBaris2 = DURASI_BARIS1_S * (baris2Src.length / baris1Src.length);
               const pill = (a: typeof BLOG_ARTICLES[number], i: number) => (
                 <Link
                   key={`${a.slug}-${i}`}
@@ -1078,10 +1086,10 @@ export default function LembarGuruApp() {
               );
               return (
                 <div style={{ overflow:"hidden" }}>
-                  <div style={{ display:"flex", gap:10, width:"max-content", marginBottom:10, animation:"marqueeLeft 26s linear infinite" }}>
+                  <div style={{ display:"flex", gap:10, width:"max-content", marginBottom:10, animation:`marqueeLeft ${DURASI_BARIS1_S}s linear infinite` }}>
                     {baris1.map(pill)}
                   </div>
-                  <div style={{ display:"flex", gap:10, width:"max-content", animation:"marqueeRight 26s linear infinite" }}>
+                  <div style={{ display:"flex", gap:10, width:"max-content", animation:`marqueeRight ${durasiBaris2}s linear infinite` }}>
                     {baris2.map(pill)}
                   </div>
                 </div>
@@ -1362,6 +1370,7 @@ export default function LembarGuruApp() {
           <div style={{ display:"flex", gap:24, flexWrap:"wrap", justifyContent:"center" }}>
             {[
               { href:"/blog",     label:"Blog" },
+              { href:"/materi",   label:"Materi Guru" },
               { href:"/about",    label:"Tentang Kami" },
               { href:"/harga",    label:"Harga" },
               { href:"/referral", label:"Referral" },

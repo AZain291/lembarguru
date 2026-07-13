@@ -275,7 +275,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-generator-rpp',
-    title: 'Generator RPP — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Generator RPP — Berhenti Mulai dari Halaman Kosong Lagi',
     pill: 'Generator RPP',
     excerpt: 'Susun RPP/modul ajar otomatis sesuai kurikulum yang dipakai — bukan pengganti keputusan guru, tapi penghilang bagian paling melelahkan: mulai dari halaman kosong.',
     category: 'Alat Bantu Guru',
@@ -294,7 +294,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-bank-soal',
-    title: 'Bank Soal — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Bank Soal — Ambil Soal Tambahan Tanpa Generate Ulang dari Nol',
     pill: 'Bank Soal',
     excerpt: 'Kolam soal bersama dari hasil generate semua guru pengguna LembarGuru — cara cepat dapat soal tambahan tanpa generate ulang dari nol.',
     category: 'Alat Bantu Guru',
@@ -313,7 +313,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-analisis-soal',
-    title: 'Analisis Soal — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Analisis Soal — Cek Soal Mana yang Perlu Diperbaiki Sebelum Diujikan',
     pill: 'Analisis Soal',
     excerpt: 'Evaluasi tingkat kesulitan dan validitas soal yang sudah dipakai, supaya bank soal pribadi guru makin baik dari waktu ke waktu.',
     category: 'Alat Bantu Guru',
@@ -332,7 +332,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-silabus-ki-kd',
-    title: 'Silabus & KI/KD — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Silabus & KI/KD — Beres Sekali Klik, Bukan Sepanjang Libur Awal Tahun',
     pill: 'Silabus & KI/KD',
     excerpt: 'Susun silabus dan pemetaan Kompetensi Inti/Kompetensi Dasar otomatis — dokumen administratif yang paling sering jadi beban awal tahun ajaran.',
     category: 'Alat Bantu Guru',
@@ -351,7 +351,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-flashcard',
-    title: 'Flashcard — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Flashcard — Bikin Hafalan Nempel Lebih Lama Lewat Kartu Interaktif',
     pill: 'Flashcard',
     excerpt: 'Kartu belajar interaktif untuk hafalan — cocok dipadukan dengan teknik spaced repetition supaya materi lebih lama diingat.',
     category: 'Alat Bantu Guru',
@@ -370,7 +370,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-rubrik-penilaian',
-    title: 'Rubrik Penilaian — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Rubrik Penilaian — Nilai Adil dan Gampang Dijelaskan ke Orang Tua',
     pill: 'Rubrik Penilaian',
     excerpt: 'Kriteria penilaian tugas/proyek yang jelas dan objektif — mengurangi bias penilaian sekaligus mempermudah guru menjelaskan nilai ke siswa dan orang tua.',
     category: 'Alat Bantu Guru',
@@ -389,7 +389,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-acak-nama-siswa',
-    title: 'Acak Nama Siswa — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Acak Nama Siswa — Adil Tanpa Drama, Semua Siswa Kebagian Giliran',
     pill: 'Acak Nama Siswa',
     excerpt: 'Pemilihan siswa yang adil dan acak untuk sesi tanya jawab — semua siswa punya kesempatan yang sama, bukan cuma yang biasa aktif.',
     category: 'Alat Bantu Guru',
@@ -408,7 +408,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-bagi-kelompok',
-    title: 'Bagi Kelompok — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Bagi Kelompok — Bagi Tim Merata Tanpa Drama Pilih-Pilih Teman',
     pill: 'Bagi Kelompok',
     excerpt: 'Bagi siswa ke dalam kelompok secara otomatis dan merata — hindari drama "pilih-pilih teman" yang sering bikin sebagian siswa merasa tersisih.',
     category: 'Alat Bantu Guru',
@@ -427,7 +427,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-jadwal-mengajar',
-    title: 'Jadwal Mengajar — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Jadwal Mengajar — Satu Tempat, Tidak Ada Lagi Kelas yang Kelewat',
     pill: 'Jadwal Mengajar',
     excerpt: 'Kelola jadwal dan pengingat mengajar dalam satu tempat — penting terutama untuk guru yang mengajar banyak kelas atau di beberapa sekolah.',
     category: 'Alat Bantu Guru',
@@ -446,7 +446,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-konversi-nilai',
-    title: 'Konversi Nilai — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Konversi Nilai — Ubah Skor ke Skala Nilai Secara Instan',
     pill: 'Konversi Nilai',
     excerpt: 'Ubah skor mentah jadi skala nilai atau huruf sesuai standar sekolah — cepat dan konsisten, terutama saat rekap nilai akhir semester.',
     category: 'Alat Bantu Guru',
@@ -465,7 +465,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-timer-kelas',
-    title: 'Timer Kelas — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Timer Kelas — Bantu Siswa Kelola Waktu Sendiri di Kelas',
     pill: 'Timer Kelas',
     excerpt: 'Pengatur waktu untuk aktivitas atau ujian di kelas — bantu siswa mengelola waktu mereka sendiri, bukan cuma mengandalkan guru mengingatkan.',
     category: 'Alat Bantu Guru',
@@ -484,7 +484,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-papan-poin',
-    title: 'Papan Poin Kelas — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Papan Poin Kelas — Bikin Kelas Lebih Hidup Lewat Kompetisi Sehat',
     pill: 'Papan Poin Kelas',
     excerpt: 'Papan skor gamifikasi untuk memotivasi partisipasi siswa — bikin kelas lebih hidup lewat kompetisi yang sehat.',
     category: 'Alat Bantu Guru',
@@ -503,7 +503,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-presensi-digital',
-    title: 'Presensi Digital — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Presensi Digital — Absen Rapi Tanpa Kertas dan Hitung Manual',
     pill: 'Presensi Digital',
     excerpt: 'Absensi harian tanpa kertas, tersimpan rapi di perangkat yang dipakai — memudahkan rekap kehadiran periodik tanpa hitung manual.',
     category: 'Alat Bantu Guru',
@@ -522,7 +522,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-generator-sertifikat',
-    title: 'Sertifikat — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Sertifikat — Cetak Piagam Penghargaan Tanpa Perlu Jago Desain',
     pill: 'Sertifikat',
     excerpt: 'Buat sertifikat atau piagam penghargaan siswa dengan cepat dan rapi, tanpa perlu keahlian desain.',
     category: 'Alat Bantu Guru',
@@ -541,7 +541,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-text-to-speech',
-    title: 'Baca Teks (TTS) — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Baca Teks (TTS) — Ubah Bacaan Jadi Audio untuk Siswa Auditori',
     pill: 'Baca Teks (TTS)',
     excerpt: 'Ubah teks atau cerita jadi audio — bantu variasi metode belajar sekaligus mendukung siswa dengan gaya belajar auditori.',
     category: 'Alat Bantu Guru',
@@ -560,7 +560,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-catatan-siswa',
-    title: 'Catatan Siswa — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Catatan Siswa — Rekam Jejak Siswa, Bukan Cuma Mengandalkan Ingatan',
     pill: 'Catatan Siswa',
     excerpt: 'Dokumentasi perkembangan dan perilaku siswa secara individual — rekam jejak konkret, bukan cuma mengandalkan ingatan guru.',
     category: 'Alat Bantu Guru',
@@ -579,7 +579,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-kalkulator-nilai',
-    title: 'Kalkulator Nilai — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Kalkulator Nilai — Rata-Rata & KKM Otomatis, Bebas Salah Hitung',
     pill: 'Kalkulator Nilai',
     excerpt: 'Hitung rata-rata nilai berbobot dan status ketuntasan (KKM) secara otomatis — cepat dan bebas dari salah hitung manual.',
     category: 'Alat Bantu Guru',
@@ -598,7 +598,7 @@ export const BLOG_ARTICLES: BlogArticle[] = [
   },
   {
     slug: 'tool-ice-breaker',
-    title: 'Ice Breaker — Manfaat dan Cara Pakai yang Efektif untuk Guru',
+    title: 'Ice Breaker — Pecahkan Ketegangan Kelas dengan Ice Breaker Seru',
     pill: 'Ice Breaker',
     excerpt: 'Ide game dan energizer singkat untuk mencairkan suasana kelas yang lesu atau tegang, tanpa memotong banyak waktu materi.',
     category: 'Alat Bantu Guru',

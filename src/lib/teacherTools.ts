@@ -12,25 +12,25 @@ export interface ToolItem {
 // bukan emoji lagi -- lihat src/components/tools/ToolIcon.tsx.
 export const TEACHER_TOOLS: ToolItem[] = [
   // ── sesuai draft awal ──
-  { slug: "generator-rpp",     label: "Generator RPP",     desc: "Buat RPP / modul ajar otomatis" },
-  { slug: "bank-soal",         label: "Bank Soal",         desc: "Simpan & kelola koleksi soal" },
-  { slug: "analisis-soal",     label: "Analisis Soal",     desc: "Analisis tingkat kesulitan & validitas soal" },
-  { slug: "silabus-ki-kd",     label: "Silabus & KI/KD",   desc: "Susun silabus dan pemetaan KI/KD" },
-  { slug: "flashcard",         label: "Flashcard",         desc: "Buat kartu belajar interaktif" },
-  { slug: "rubrik-penilaian",  label: "Rubrik Penilaian",  desc: "Buat rubrik penilaian tugas/proyek" },
-  { slug: "acak-nama-siswa",   label: "Acak Nama Siswa",   desc: "Pilih nama siswa secara acak" },
-  { slug: "bagi-kelompok",     label: "Bagi Kelompok",     desc: "Bagi siswa ke dalam kelompok otomatis" },
-  { slug: "jadwal-mengajar",   label: "Jadwal Mengajar",   desc: "Kelola jadwal & pengingat mengajar" },
-  { slug: "konversi-nilai",    label: "Konversi Nilai",    desc: "Konversi skor ke skala nilai/huruf" },
+  { slug: "generator-rpp",     label: "Generator RPP",     desc: "RPP & modul ajar jadi dalam hitungan menit, bukan berjam-jam" },
+  { slug: "bank-soal",         label: "Bank Soal",         desc: "Satu gudang soal, tinggal ambil kapan saja butuh" },
+  { slug: "analisis-soal",     label: "Analisis Soal",     desc: "Tahu soal mana yang kelewat sulit sebelum diujikan ke siswa" },
+  { slug: "silabus-ki-kd",     label: "Silabus & KI/KD",   desc: "Susun silabus & pemetaan KI/KD tanpa pusing urusan format" },
+  { slug: "flashcard",         label: "Flashcard",         desc: "Bikin sesi hafalan jadi seru lewat kartu belajar interaktif" },
+  { slug: "rubrik-penilaian",  label: "Rubrik Penilaian",  desc: "Nilai tugas & proyek jadi lebih adil dan transparan" },
+  { slug: "acak-nama-siswa",   label: "Acak Nama Siswa",   desc: "Adil tanpa drama — pilih siswa maju secara acak" },
+  { slug: "bagi-kelompok",     label: "Bagi Kelompok",     desc: "Bagi siswa ke kelompok belajar sekali klik, tanpa ribut" },
+  { slug: "jadwal-mengajar",   label: "Jadwal Mengajar",   desc: "Jadwal & pengingat mengajar rapi, tidak ada lagi kelas kelewat" },
+  { slug: "konversi-nilai",    label: "Konversi Nilai",    desc: "Ubah skor jadi skala nilai/huruf secara instan" },
   // ── tool tambahan ──
-  { slug: "timer-kelas",       label: "Timer Kelas",       desc: "Pengatur waktu untuk aktivitas/ujian di kelas", isNew: false },
-  { slug: "papan-poin",        label: "Papan Poin Kelas",  desc: "Papan skor gamifikasi untuk memotivasi siswa", isNew: false },
-  { slug: "presensi-digital",  label: "Presensi Digital",  desc: "Absensi siswa harian, disimpan di perangkat ini", isNew: false },
-  { slug: "generator-sertifikat", label: "Sertifikat",     desc: "Buat sertifikat/piagam penghargaan siswa", isNew: false },
-  { slug: "text-to-speech",    label: "Baca Teks (TTS)",   desc: "Ubah teks/cerita jadi audio untuk siswa", isNew: false },
-  { slug: "catatan-siswa",     label: "Catatan Siswa",     desc: "Catat perkembangan & perilaku siswa per individu", isNew: false },
-  { slug: "kalkulator-nilai",  label: "Kalkulator Nilai",  desc: "Hitung rata-rata nilai berbobot & ketuntasan (KKM)", isNew: false },
-  { slug: "ice-breaker",       label: "Ice Breaker",       desc: "Ide game & energizer singkat untuk kelas", isNew: false },
+  { slug: "timer-kelas",       label: "Timer Kelas",       desc: "Atur waktu ujian & aktivitas kelas biar tidak molor", isNew: false },
+  { slug: "papan-poin",        label: "Papan Poin Kelas",  desc: "Bikin siswa makin semangat lewat papan skor gamifikasi", isNew: false },
+  { slug: "presensi-digital",  label: "Presensi Digital",  desc: "Absen harian siswa, rapi tanpa kertas dan tanpa ribet", isNew: false },
+  { slug: "generator-sertifikat", label: "Sertifikat",     desc: "Cetak sertifikat & piagam penghargaan siswa dalam sekejap", isNew: false },
+  { slug: "text-to-speech",    label: "Baca Teks (TTS)",   desc: "Ubah teks/cerita jadi suara, biar siswa bisa sambil dengar", isNew: false },
+  { slug: "catatan-siswa",     label: "Catatan Siswa",     desc: "Rekam perkembangan & perilaku tiap siswa, rapi per individu", isNew: false },
+  { slug: "kalkulator-nilai",  label: "Kalkulator Nilai",  desc: "Hitung rata-rata berbobot & ketuntasan (KKM) tanpa kalkulator manual", isNew: false },
+  { slug: "ice-breaker",       label: "Ice Breaker",       desc: "Pecahkan ketegangan kelas dengan ice breaker singkat dan seru", isNew: false },
 ];
 
 export function getToolBySlug(slug: string): ToolItem | undefined {

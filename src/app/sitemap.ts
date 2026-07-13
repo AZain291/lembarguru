@@ -14,6 +14,7 @@ export default function sitemap() {
     { url: `${BASE_URL}/harga`, lastModified: new Date() },
     { url: `${BASE_URL}/coba-gratis`, lastModified: new Date() },
     { url: `${BASE_URL}/blog`, lastModified: new Date() },
+    { url: `${BASE_URL}/materi`, lastModified: new Date() },
     { url: `${BASE_URL}/about`, lastModified: new Date() },
     { url: `${BASE_URL}/contact`, lastModified: new Date() },
     { url: `${BASE_URL}/terms`, lastModified: new Date() },
