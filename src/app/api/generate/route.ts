@@ -7,6 +7,12 @@ import { splitSoalBlocks } from '@/utils/soalBank'
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export const maxDuration = 60
 
+// Routing model: Pilihan Ganda murni faktual/pilihan -- cukup untuk model
+// yang lebih ringan & murah. Tipe lain (Esai, Benar-Salah, Isian, HOTS)
+// butuh nuansa penyusunan pembahasan yang lebih baik, tetap pakai Sonnet.
+const MODEL_HAIKU = 'claude-haiku-4-5'
+const MODEL_SONNET = 'claude-sonnet-4-6'
+
 interface MixedConfig {
   pilihan_ganda: number
   essay: number
@@ -15,26 +21,27 @@ interface MixedConfig {
   hots: number
 }
 
-function buildPrompt(params: {
-  mapel: string, kelas: string, topik: string | null, difficulty: string,
-  kurikulum: string, fase: string | null, tipe: string, jumlahSoal: number, mixedConfig: MixedConfig | null,
-}): string {
-  const { mapel, kelas, topik, difficulty, kurikulum, fase, tipe, jumlahSoal, mixedConfig } = params
+interface BaseParams {
+  mapel: string; kelas: string; topik: string | null; difficulty: string
+  kurikulum: string; fase: string | null
+}
 
+function buildBaseInfo({ mapel, kelas, topik, difficulty, kurikulum, fase }: BaseParams): string {
   const kurikulumNote = kurikulum === 'Kurikulum Merdeka'
     ? `Fase: ${fase}. Sesuaikan dengan CP dan TP Kurikulum Merdeka.`
     : kurikulum === 'Kurikulum Cambridge'
     ? 'Sesuaikan dengan standar Cambridge International Curriculum (gaya soal, istilah, dan tingkat berpikir ala Cambridge English). Tulis soal, opsi jawaban, dan pembahasan dalam Bahasa Inggris, kecuali diminta lain.'
     : 'Sesuaikan dengan KD Kurikulum Nasional (K-13).'
 
-  const baseInfo = `
+  return `
 Mata Pelajaran: ${mapel}
 Kelas: ${kelas}
 Topik: ${topik || '(umum sesuai kelas)'}
 Kurikulum: ${kurikulum} – ${kurikulumNote}
 Tingkat kesulitan: ${difficulty || 'Campuran'}`
+}
 
-  const pgFormat = `
+const PG_FORMAT = `
 Untuk PILIHAN GANDA:
 1. [teks soal]
 a. [opsi a]
@@ -44,46 +51,59 @@ d. [opsi d]
 Jawaban: [huruf jawaban benar]
 Pembahasan: [penjelasan singkat mengapa jawaban tersebut benar]`
 
-  const essayFormat = `
+const ESSAY_FORMAT = `
 Untuk ESAI / URAIAN:
 1. [teks soal]
 Pembahasan: [panduan jawaban dan poin-poin yang harus ada dalam jawaban siswa]`
 
-  const bsFormat = `
+const BS_FORMAT = `
 Untuk BENAR/SALAH:
 1. [pernyataan]
 Jawaban: [Benar / Salah]
 Pembahasan: [penjelasan mengapa pernyataan itu benar atau salah]`
 
-  const isianFormat = `
+const ISIAN_FORMAT = `
 Untuk ISIAN SINGKAT:
 1. [kalimat dengan ___ sebagai tempat kosong]
 Pembahasan: [jawaban singkat dan penjelasan]`
 
-  const hotsFormat = `
+const HOTS_FORMAT = `
 Untuk HOTS:
 1. [soal analisis/evaluasi/kreasi tingkat tinggi]
 Pembahasan: [langkah berpikir dan poin kunci dalam menjawab]`
 
-  if (tipe === 'campuran' && mixedConfig) {
-    const parts: string[] = []
-    const typeMap: Record<string, { label: string, format: string }> = {
-      pilihan_ganda: { label: 'PILIHAN GANDA', format: pgFormat },
-      essay:         { label: 'ESAI / URAIAN', format: essayFormat },
-      benar_salah:   { label: 'BENAR ATAU SALAH', format: bsFormat },
-      isian:         { label: 'ISIAN SINGKAT', format: isianFormat },
-      hots:          { label: 'HOTS', format: hotsFormat },
-    }
-    for (const [key, count] of Object.entries(mixedConfig)) {
-      if (count > 0 && typeMap[key]) {
-        parts.push(`${count} soal ${typeMap[key].label}`)
-      }
-    }
+const TYPE_MAP: Record<keyof MixedConfig, { label: string; format: string }> = {
+  pilihan_ganda: { label: 'PILIHAN GANDA', format: PG_FORMAT },
+  essay:         { label: 'ESAI / URAIAN', format: ESSAY_FORMAT },
+  benar_salah:   { label: 'BENAR ATAU SALAH', format: BS_FORMAT },
+  isian:         { label: 'ISIAN SINGKAT', format: ISIAN_FORMAT },
+  hots:          { label: 'HOTS', format: HOTS_FORMAT },
+}
 
-    let prompt = `Kamu adalah guru profesional Indonesia yang berpengalaman.
+const SINGLE_TYPE_FORMAT_MAP: Record<string, string> = {
+  'Pilihan Ganda': PG_FORMAT,
+  'Esai / Uraian': ESSAY_FORMAT,
+  'Benar atau Salah': BS_FORMAT,
+  'Isian Singkat': ISIAN_FORMAT,
+  'HOTS (Pro)': HOTS_FORMAT,
+}
+
+// Dipakai untuk mode campuran -- bisa dipanggil dengan subset config (mis.
+// cuma { pilihan_ganda } untuk grup yang dirutekan ke Haiku, atau sisanya
+// untuk grup yang dirutekan ke Sonnet) supaya tiap grup jadi prompt+panggilan
+// API sendiri, tapi format output (heading "# TIPE" per bagian) tetap sama
+// seperti satu panggilan gabungan -- splitSoalBlocks() & parser client tidak
+// perlu tahu bedanya.
+function buildMixedPrompt(configSubset: Partial<MixedConfig>, params: BaseParams): string {
+  const entries = (Object.entries(configSubset) as [keyof MixedConfig, number][])
+    .filter(([key, count]) => count > 0 && TYPE_MAP[key])
+
+  const parts = entries.map(([key, count]) => `${count} soal ${TYPE_MAP[key].label}`)
+
+  let prompt = `Kamu adalah guru profesional Indonesia yang berpengalaman.
 Buat soal campuran dengan rincian berikut:
 ${parts.join(', ')}
-${baseInfo}
+${buildBaseInfo(params)}
 
 PENTING – Format output wajib diikuti:
 - Jangan gunakan markdown (tidak ada **, #, --)
@@ -92,27 +112,18 @@ PENTING – Format output wajib diikuti:
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
 - Langsung mulai tanpa pengantar apapun\n\n`
 
-    for (const [key, count] of Object.entries(mixedConfig)) {
-      if (count > 0 && typeMap[key]) {
-        prompt += `# ${typeMap[key].label}\nBuat ${count} soal:\n${typeMap[key].format}\n\n`
-      }
-    }
-    return prompt
+  for (const [key, count] of entries) {
+    prompt += `# ${TYPE_MAP[key].label}\nBuat ${count} soal:\n${TYPE_MAP[key].format}\n\n`
   }
+  return prompt
+}
 
-  const typeFormatMap: Record<string, string> = {
-    'Pilihan Ganda': pgFormat,
-    'Esai / Uraian': essayFormat,
-    'Benar atau Salah': bsFormat,
-    'Isian Singkat': isianFormat,
-    'HOTS (Pro)': hotsFormat,
-  }
-
-  const format = typeFormatMap[tipe] ?? pgFormat
+function buildSinglePrompt(tipe: string, jumlahSoal: number, params: BaseParams): string {
+  const format = SINGLE_TYPE_FORMAT_MAP[tipe] ?? PG_FORMAT
 
   return `Kamu adalah guru profesional Indonesia yang berpengalaman.
 Buat ${jumlahSoal} soal ${tipe} dengan ketentuan:
-${baseInfo}
+${buildBaseInfo(params)}
 
 Format WAJIB untuk setiap soal:
 ${format}
@@ -125,6 +136,21 @@ PENTING:
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
 
 Buat soal sekarang:`
+}
+
+function tokensFor(count: number, essayHeavy: boolean): number {
+  return Math.min(8192, Math.max(1024, Math.round(count * (essayHeavy ? 400 : 180))))
+}
+
+async function callModel(model: string, prompt: string, maxTokens: number): Promise<{ text: string; tokens: number }> {
+  const message = await client.messages.create({
+    model,
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }],
+  })
+  const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
+  const tokens = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
+  return { text, tokens }
 }
 
 export async function POST(request: NextRequest) {
@@ -169,19 +195,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const prompt = buildPrompt({ mapel, kelas, topik, difficulty, kurikulum, fase, tipe, jumlahSoal: totalSoal, mixedConfig })
+    const baseParams: BaseParams = { mapel, kelas, topik, difficulty, kurikulum, fase }
 
-    const isEssayHeavy = ['Esai / Uraian', 'HOTS (Pro)', 'campuran'].includes(tipe)
-    const dynamicMaxTokens = Math.min(8192, Math.max(1024, Math.round(totalSoal * (isEssayHeavy ? 400 : 180))))
+    let hasil: string
+    let totalTokens: number
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: dynamicMaxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    })
+    if (tipe === 'campuran' && mixedConfig) {
+      const config = mixedConfig as MixedConfig
+      const pgCount = config.pilihan_ganda ?? 0
+      const restCount = totalSoal - pgCount
+      const restHasEssayOrHots = (config.essay ?? 0) > 0 || (config.hots ?? 0) > 0
 
-    const hasil = message.content[0].type === 'text' ? message.content[0].text : ''
-    const totalTokens = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
+      // Dua panggilan API paralel: grup Pilihan Ganda ke Haiku (murah, cukup
+      // untuk soal faktual/pilihan), grup lainnya (Esai/BS/Isian/HOTS) tetap
+      // ke Sonnet. Salah satu grup di-skip kalau count-nya 0.
+      const jobs: Promise<{ text: string; tokens: number }>[] = []
+      if (pgCount > 0) {
+        jobs.push(callModel(MODEL_HAIKU, buildMixedPrompt({ pilihan_ganda: pgCount }, baseParams), tokensFor(pgCount, false)))
+      }
+      if (restCount > 0) {
+        const { pilihan_ganda: _pg, ...restConfig } = config
+        jobs.push(callModel(MODEL_SONNET, buildMixedPrompt(restConfig, baseParams), tokensFor(restCount, restHasEssayOrHots)))
+      }
+
+      const results = await Promise.all(jobs)
+      hasil = results.map((r) => r.text).join('\n\n')
+      totalTokens = results.reduce((a, r) => a + r.tokens, 0)
+    } else {
+      const model = tipe === 'Pilihan Ganda' ? MODEL_HAIKU : MODEL_SONNET
+      const isEssayHeavy = ['Esai / Uraian', 'HOTS (Pro)'].includes(tipe)
+      const prompt = buildSinglePrompt(tipe, totalSoal, baseParams)
+      const result = await callModel(model, prompt, tokensFor(totalSoal, isEssayHeavy))
+      hasil = result.text
+      totalTokens = result.tokens
+    }
 
     // Simpan jumlah soal yang digenerate
     await logUsage(identity, {
