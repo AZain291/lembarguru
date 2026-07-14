@@ -6,12 +6,15 @@ import { createAdminClient } from '@/utils/supabase/admin'
 // menghapus akun sendiri (id diambil dari sesi, bukan dari body) supaya
 // tidak bisa dipakai untuk menghapus akun orang lain.
 //
-// profiles.id punya "on delete cascade" ke auth.users(id) (lihat
-// src/docs/supabase_migration.sql), jadi menghapus user lewat
-// admin.auth.admin.deleteUser() otomatis ikut menghapus baris profiles.
-// Tabel lain (usage_logs, orders, referrals, referral_redemptions) sudah
-// punya aturan FK masing-masing (set null / cascade) dari migration yang
-// sudah ada -- tidak perlu dibersihkan manual di sini.
+// Tabel-tabel terkait SEHARUSNYA sudah punya FK on delete cascade/set null
+// ke auth.users(id) (lihat src/docs/supabase_migration.sql +
+// 0002_referral.sql/0004_generated_soal.sql), tapi migration itu pakai
+// "create table if not exists" -- kalau tabelnya sudah ada dari setup lama
+// SEBELUM migration ini ditulis, constraint itu tidak pernah benar-benar
+// ter-apply, dan admin.auth.admin.deleteUser() gagal dengan foreign key
+// violation begitu ada baris yang masih mereferensikan user itu. Makanya
+// dibersihkan manual dulu di sini -- aman dijalankan dobel (idempotent)
+// biarpun cascade DB-nya ternyata memang sudah benar.
 export async function POST() {
   try {
     const supabase = await createClient()
@@ -22,7 +25,43 @@ export async function POST() {
     }
 
     const admin = createAdminClient()
-    const { error } = await admin.auth.admin.deleteUser(user.id)
+    const userId = user.id
+
+    // Urutan: hapus baris anak (referral_redemptions) sebelum baris induk
+    // (referrals) supaya tidak kena FK violation di antara tabel itu
+    // sendiri kalau cascade-nya juga belum ter-apply.
+    const cleanupSteps: Array<{ label: string; run: () => PromiseLike<{ error: { message: string } | null }> }> = [
+      { label: 'referral_redemptions (sebagai penerima referral)', run: () => admin.from('referral_redemptions').delete().eq('referred_user_id', userId) },
+      {
+        label: 'referral_redemptions (di bawah kode referral user ini)',
+        run: async () => {
+          const { data: ownReferrals, error: selectError } = await admin.from('referrals').select('id').eq('referrer_user_id', userId)
+          if (selectError) return { error: selectError }
+          const referralIds = (ownReferrals ?? []).map((r) => r.id)
+          if (referralIds.length === 0) return { error: null }
+          return admin.from('referral_redemptions').delete().in('referral_id', referralIds)
+        },
+      },
+      { label: 'referrals', run: () => admin.from('referrals').delete().eq('referrer_user_id', userId) },
+      { label: 'orders', run: () => admin.from('orders').delete().eq('user_id', userId) },
+      { label: 'usage_logs', run: () => admin.from('usage_logs').update({ user_id: null }).eq('user_id', userId) },
+      { label: 'generated_soal', run: () => admin.from('generated_soal').update({ user_id: null }).eq('user_id', userId) },
+      { label: 'profiles', run: () => admin.from('profiles').delete().eq('id', userId) },
+    ]
+
+    for (const step of cleanupSteps) {
+      const { error } = await step.run()
+      // Supabase JS TIDAK melempar exception untuk error query -- selalu
+      // cek `error` eksplisit. Best-effort: lanjut ke step berikutnya biar
+      // satu tabel yang belum ada/gagal tidak menghalangi pembersihan tabel
+      // lain, tapi tetap dicatat supaya kelihatan kalau ada yang perlu
+      // ditindaklanjuti manual.
+      if (error) {
+        console.error(`[account/delete] gagal bersihkan ${step.label}:`, error.message)
+      }
+    }
+
+    const { error } = await admin.auth.admin.deleteUser(userId)
 
     if (error) {
       console.error('[account/delete] gagal hapus user:', error)
