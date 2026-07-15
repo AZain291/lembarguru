@@ -44,7 +44,14 @@ export async function POST() {
       },
       { label: 'referrals', run: () => admin.from('referrals').delete().eq('referrer_user_id', userId) },
       { label: 'orders', run: () => admin.from('orders').delete().eq('user_id', userId) },
-      { label: 'usage_logs', run: () => admin.from('usage_logs').update({ user_id: null }).eq('user_id', userId) },
+      // usage_logs punya CHECK constraint "user_or_guest" di production
+      // (user_id IS NOT NULL OR guest_token IS NOT NULL, tidak ada di file
+      // migration manapun -- ditambah manual di masa lalu, lihat catatan
+      // kolom questions_count di CLAUDE.md). Nulling user_id tanpa guest_token
+      // MELANGGAR constraint itu, jadi baris usage_logs milik user ini
+      // dihapus langsung -- konsisten dengan copy di DeleteAccountModal yang
+      // sudah bilang "riwayat pemakaian" ikut terhapus permanen.
+      { label: 'usage_logs', run: () => admin.from('usage_logs').delete().eq('user_id', userId) },
       { label: 'generated_soal', run: () => admin.from('generated_soal').update({ user_id: null }).eq('user_id', userId) },
       { label: 'profiles', run: () => admin.from('profiles').delete().eq('id', userId) },
     ]
