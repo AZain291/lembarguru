@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
+import { GoogleIcon } from '@/components/GoogleIcon'
 
 function LoginInner() {
   const [mode, setMode]         = useState<'login' | 'register'>('login')
@@ -61,6 +62,15 @@ function LoginInner() {
     setLoading(false)
   }
 
+  async function handleGoogleAuth() {
+    setMessage('')
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    })
+    if (error) setMessage(error.message)
+  }
+
   const inp = { width: '100%', padding: '9px 11px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
 
   return (
@@ -78,21 +88,33 @@ function LoginInner() {
           {mode === 'login' ? 'Selamat datang kembali!' : 'Dapatkan 5× generate soal per hari.'}
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <button type="button" onClick={handleGoogleAuth}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: 9, background: '#fff', fontWeight: 600, fontSize: 13.5, color: '#111827', cursor: 'pointer', boxSizing: 'border-box' }}>
+          <GoogleIcon />
+          Lanjutkan dengan Google
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>atau</span>
+          <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
+        </div>
+
+        <form onSubmit={handleSubmit} autoComplete="on" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
           {/* Nama & WA — hanya saat register */}
           {mode === 'register' && (
             <>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Nama Lengkap</label>
-                <input type="text" placeholder="cth: Budi Santoso" value={name} onChange={e => setName(e.target.value)} required
+                <input type="text" name="name" autoComplete="name" placeholder="cth: Budi Santoso" value={name} onChange={e => setName(e.target.value)} required
                   style={inp} />
               </div>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>
                   Nomor WhatsApp <span style={{ fontWeight: 400, color: '#9ca3af' }}>(opsional)</span>
                 </label>
-                <input type="tel" placeholder="cth: 08123456789" value={phone} onChange={e => setPhone(e.target.value)}
+                <input type="tel" name="tel" autoComplete="tel" placeholder="cth: 08123456789" value={phone} onChange={e => setPhone(e.target.value)}
                   style={inp} />
               </div>
             </>
@@ -100,12 +122,12 @@ function LoginInner() {
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Email</label>
-            <input type="email" placeholder="guru@sekolah.ac.id" value={email} onChange={e => setEmail(e.target.value)} required
+            <input type="email" name="email" autoComplete="email" placeholder="guru@sekolah.ac.id" value={email} onChange={e => setEmail(e.target.value)} required
               style={inp} />
           </div>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 5 }}>Password</label>
-            <input type="password" placeholder="Minimal 6 karakter" value={password} onChange={e => setPassword(e.target.value)} required minLength={6}
+            <input type="password" name="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="Minimal 6 karakter" value={password} onChange={e => setPassword(e.target.value)} required minLength={6}
               style={inp} />
           </div>
 

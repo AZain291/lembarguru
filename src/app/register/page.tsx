@@ -7,6 +7,7 @@ import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
+import { GoogleIcon } from "@/components/GoogleIcon";
 
 function RegisterInner() {
   const router = useRouter();
@@ -70,6 +71,16 @@ function RegisterInner() {
     router.push("/verifikasi-email");
   }
 
+  async function handleGoogleAuth() {
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) setError(error.message);
+  }
+
   return (
     <div style={{ maxWidth: 400, margin: "40px auto", padding: "0 20px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
@@ -92,26 +103,38 @@ function RegisterInner() {
         </div>
       )}
 
-      <form onSubmit={handleRegister}>
+      <button type="button" onClick={handleGoogleAuth}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", boxSizing: "border-box", padding: "11px", border: "1px solid #DCD5C0", borderRadius: 9, background: "#fff", fontWeight: 600, fontSize: 14, color: "#1F2A44", cursor: "pointer", marginBottom: 18 }}>
+        <GoogleIcon />
+        Daftar dengan Google
+      </button>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <div style={{ flex: 1, height: 1, background: "#DCD5C0" }} />
+        <span style={{ fontSize: 12, color: "#9ca3af" }}>atau</span>
+        <div style={{ flex: 1, height: 1, background: "#DCD5C0" }} />
+      </div>
+
+      <form onSubmit={handleRegister} autoComplete="on">
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#1F2A44" }}>
             Nama lengkap
           </label>
-          <input required value={nama} onChange={(e) => setNama(e.target.value)}
+          <input required name="name" autoComplete="name" value={nama} onChange={(e) => setNama(e.target.value)}
             style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCD5C0", borderRadius: 8 }} />
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#1F2A44" }}>
             Email
           </label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+          <input type="email" required name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
             style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCD5C0", borderRadius: 8 }} />
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6, color: "#1F2A44" }}>
             Kata sandi
           </label>
-          <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
+          <input type="password" required name="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimal 8 karakter"
             style={{ width: "100%", padding: "10px 12px", border: "1px solid #DCD5C0", borderRadius: 8 }} />
         </div>
