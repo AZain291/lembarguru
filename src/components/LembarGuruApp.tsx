@@ -718,7 +718,7 @@ export default function LembarGuruApp() {
               Buat soal berkualitas<br /><span style={{ color:C.accent }}>dalam hitungan detik</span>
             </h1>
             <p style={{ fontSize:15, color:C.textSecondary, lineHeight:1.7, maxWidth:460, margin:"0 auto 20px" }}>
-              Generator soal untuk guru SD, SMP, dan SMA — sesuai Kurikulum Merdeka & K-13.
+              Generator soal AI untuk guru SD, SMP, SMK, MA & SMA<br />sesuai Kurikulum Merdeka & K-13.
             </p>
 
             {/* Kurikulum toggle */}
@@ -1452,7 +1452,7 @@ function SharePromoModal({
     // Description
     ctx.fillStyle = "#a5a3c0";
     ctx.font = "28px sans-serif";
-    ctx.fillText("Generator soal AI untuk guru SD, SMP & SMA", 80, 440);
+    ctx.fillText("Generator soal AI untuk guru SD, SMP, SMK, MA & SMA", 80, 440);
     ctx.fillText("Kurikulum Merdeka & K-13 — tanpa batas soal", 80, 480);
 
     // Promo box

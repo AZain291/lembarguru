@@ -6,7 +6,7 @@ import ExcelJS from 'exceljs';
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
   Table, TableRow, TableCell, BorderStyle, WidthType, VerticalAlign,
-  ShadingType, Header as DocxHeader,
+  ShadingType, Header as DocxHeader, Footer,
 } from 'docx';
 import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -257,6 +257,34 @@ function docTitle(text) {
   return new Paragraph({ text, heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, spacing: { after: 200 } });
 }
 
+function blankCell(width, lines = 3) {
+  return new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    children: Array.from({ length: lines }, () => new Paragraph({ text: '', spacing: { after: 60 } })),
+  });
+}
+
+// Footer halus bermerek -- dipakai KHUSUS di lembar yang dibawa pulang
+// siswa/orang tua (bukan dokumen administrasi internal guru), supaya nama
+// LembarGuru ikut terlihat tiap kali lembar itu dicetak/dibagikan, tanpa
+// perlu bikin produk terpisah untuk orang tua.
+function brandedFooter() {
+  return new Footer({
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        border: { top: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' } },
+        spacing: { before: 120 },
+        children: [
+          new TextRun({ text: 'Dibuat dengan ', size: 15, color: '94A3B8', italics: true }),
+          new TextRun({ text: 'LembarGuru', size: 15, color: BRAND_HEX, bold: true, italics: true }),
+          new TextRun({ text: ' • lembarguru.com', size: 15, color: '94A3B8', italics: true }),
+        ],
+      }),
+    ],
+  });
+}
+
 // ── 6. Daftar Hadir Rapat/Kegiatan ─────────────────────────────────────────
 async function buildDaftarHadir() {
   const widths = [700, 3200, 2600, 2600];
@@ -385,6 +413,82 @@ async function buildAgendaHarian() {
   await saveDoc(doc, 'agenda-harian-mengajar.docx');
 }
 
+// ── 10. Lembar PR Mingguan (dibawa pulang) ──────────────────────────────────
+async function buildLembarPRMingguan() {
+  const widths = [1100, 2200, 3400, 2200]; // total 8900 DXA
+  const headers = ['Hari', 'Mata Pelajaran', 'Tugas / PR', 'Tanda Tangan Orang Tua'];
+  const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const rows = [new TableRow({ children: headers.map((h, i) => hCell(h, widths[i])), tableHeader: true })];
+  for (const day of days) {
+    rows.push(new TableRow({
+      children: [
+        dCell(day, widths[0], { verticalAlign: VerticalAlign.CENTER }),
+        blankCell(widths[1], 2),
+        blankCell(widths[2], 2),
+        blankCell(widths[3], 2),
+      ],
+    }));
+  }
+
+  const doc = new Document({
+    sections: [{
+      footers: { default: brandedFooter() },
+      children: [
+        docTitle('LEMBAR PR MINGGUAN'),
+        ...metaParagraphs([
+          'Nama Siswa   : ______________________________________',
+          'Kelas             : ______________________________________',
+          'Minggu Ke     : __________     Tanggal: __________ s/d __________',
+        ]),
+        new Paragraph({ text: '', spacing: { after: 120 } }),
+        new Table({ width: { size: 8900, type: WidthType.DXA }, borders: DOCX_BORDERS, rows }),
+        new Paragraph({
+          spacing: { before: 200 },
+          children: [new TextRun({ text: 'Orang tua/wali mohon memberi tanda tangan di kolom paling kanan setelah PR dikerjakan dan diperiksa di rumah.', italics: true, size: 18, color: '64748B' })],
+        }),
+      ],
+    }],
+  });
+  await saveDoc(doc, 'lembar-pr-mingguan.docx');
+}
+
+// ── 11. Lembar Latihan Mandiri (dibawa pulang) ──────────────────────────────
+async function buildLembarLatihanMandiri() {
+  const widths = [500, 4700, 3700]; // total 8900 DXA
+  const headers = ['No', 'Soal / Latihan', 'Jawaban'];
+  const rows = [new TableRow({ children: headers.map((h, i) => hCell(h, widths[i])), tableHeader: true })];
+  for (let i = 1; i <= 10; i++) {
+    rows.push(new TableRow({
+      children: [
+        dCell(String(i), widths[0], { verticalAlign: VerticalAlign.CENTER }),
+        blankCell(widths[1], 3),
+        blankCell(widths[2], 3),
+      ],
+    }));
+  }
+
+  const doc = new Document({
+    sections: [{
+      footers: { default: brandedFooter() },
+      children: [
+        docTitle('LEMBAR LATIHAN MANDIRI'),
+        ...metaParagraphs([
+          'Nama Siswa       : ______________________________________',
+          'Kelas                 : ______________________________________',
+          'Mata Pelajaran  : ______________________________________',
+          'Topik                 : ______________________________________     Tanggal: __________',
+        ]),
+        new Paragraph({
+          spacing: { after: 120 },
+          children: [new TextRun({ text: 'Kerjakan latihan berikut secara mandiri di rumah. Tanyakan ke guru atau orang tua kalau ada yang belum dipahami.', italics: true, size: 18, color: '64748B' })],
+        }),
+        new Table({ width: { size: 8900, type: WidthType.DXA }, borders: DOCX_BORDERS, rows }),
+      ],
+    }],
+  });
+  await saveDoc(doc, 'lembar-latihan-mandiri.docx');
+}
+
 await buildJadwalPelajaran();
 await buildDaftarNilai();
 await buildPresensi();
@@ -394,5 +498,7 @@ await buildDaftarHadir();
 await buildProta();
 await buildPromes();
 await buildAgendaHarian();
+await buildLembarPRMingguan();
+await buildLembarLatihanMandiri();
 
 console.log('Selesai. File tersimpan di', OUT_DIR);

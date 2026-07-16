@@ -35,6 +35,7 @@ export default function MateriPage() {
           <a href="/harga" style={{ color: '#6b7280', textDecoration: 'none' }}>Harga</a>
           <a href="/referral" style={{ color: '#6b7280', textDecoration: 'none' }}>Referral</a>
           <a href="/contact" style={{ color: '#6b7280', textDecoration: 'none' }}>Kontak</a>
+          <a href="/terms" style={{ color: '#6b7280', textDecoration: 'none' }}>Syarat & Ketentuan</a>
         </div>
       </nav>
 

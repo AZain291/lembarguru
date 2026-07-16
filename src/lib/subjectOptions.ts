@@ -12,8 +12,31 @@ const MAPEL_UMUM = [
 const MAPEL_NASIONAL = ["PKn", "Sejarah", "Pendidikan Agama"];
 // Ciri khas MTs/MA (Kemenag) -- kurikulum nasional saja.
 const MAPEL_MADRASAH = ["Al-Qur'an Hadits", "Akidah Akhlak", "Fikih", "Sejarah Kebudayaan Islam", "Bahasa Arab"];
-// Ciri khas SMK -- kurikulum nasional saja.
-const MAPEL_SMK = ["Kewirausahaan", "Produk Kreatif dan Kewirausahaan", "Dasar-Dasar Kejuruan"];
+// Ciri khas SMK -- kurikulum nasional saja. Mapel umum kejuruan (berlaku
+// lintas jurusan) digabung dengan mapel produktif per konsentrasi keahlian
+// yang paling umum di SMK Indonesia (TI, Bisnis & Manajemen, Teknik &
+// Rekayasa, Pariwisata, Kesehatan, Agribisnis) -- bukan daftar lengkap
+// semua jurusan yang ada (ratusan kombinasi), tapi cakupan yang paling
+// sering dipakai.
+const MAPEL_SMK = [
+  // Umum lintas jurusan
+  "Kewirausahaan", "Produk Kreatif dan Kewirausahaan", "Dasar-Dasar Kejuruan",
+  // Teknologi Informasi (RPL, TKJ, Multimedia, DKV)
+  "Pemrograman Dasar", "Rekayasa Perangkat Lunak", "Teknik Komputer dan Jaringan",
+  "Multimedia", "Desain Komunikasi Visual", "Basis Data", "Sistem Komputer",
+  // Bisnis & Manajemen (Akuntansi, OTKP, Pemasaran)
+  "Akuntansi Dasar", "Akuntansi dan Keuangan Lembaga", "Otomatisasi dan Tata Kelola Perkantoran",
+  "Bisnis Daring dan Pemasaran", "Ekonomi Bisnis",
+  // Teknik & Rekayasa (Otomotif, Elektro, Mesin)
+  "Teknik Kendaraan Ringan Otomotif", "Teknik Sepeda Motor", "Teknik Elektronika",
+  "Teknik Instalasi Tenaga Listrik", "Teknik Pemesinan", "Teknik Pengelasan", "Gambar Teknik",
+  // Pariwisata & Perhotelan
+  "Perhotelan", "Tata Boga", "Tata Busana", "Tata Kecantikan", "Usaha Perjalanan Wisata",
+  // Kesehatan
+  "Keperawatan", "Farmasi", "Analis Kesehatan",
+  // Agribisnis
+  "Agribisnis Tanaman", "Agribisnis Ternak",
+];
 
 export const MAPEL = [...MAPEL_UMUM, ...MAPEL_NASIONAL, ...MAPEL_MADRASAH, ...MAPEL_SMK];
 

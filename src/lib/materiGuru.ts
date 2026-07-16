@@ -84,4 +84,25 @@ export const MATERI_GURU: MateriItem[] = [
     fileName: "agenda-harian-mengajar.docx",
     category: "Perencanaan Mengajar",
   },
+  // ── Dibawa ke Rumah -- satu-satunya kategori yang benar-benar sampai ke
+  // tangan orang tua/siswa (bukan cuma dipakai guru), makanya file-nya
+  // dikasih footer bermerek LembarGuru (lihat brandedFooter() di
+  // scripts/generate-materi.mjs) -- exposure ke orang tua tanpa perlu
+  // bikin produk terpisah untuk mereka.
+  {
+    slug: "lembar-pr-mingguan",
+    title: "Lembar PR Mingguan",
+    desc: "PR seminggu dalam satu lembar, lengkap dengan kolom tanda tangan orang tua",
+    format: "docx",
+    fileName: "lembar-pr-mingguan.docx",
+    category: "Dibawa ke Rumah",
+  },
+  {
+    slug: "lembar-latihan-mandiri",
+    title: "Lembar Latihan Mandiri",
+    desc: "Lembar latihan soal-jawaban buat siswa berlatih sendiri di rumah",
+    format: "docx",
+    fileName: "lembar-latihan-mandiri.docx",
+    category: "Dibawa ke Rumah",
+  },
 ];
