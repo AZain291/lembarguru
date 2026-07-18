@@ -721,10 +721,13 @@ export default function LembarGuruApp() {
               Generator soal AI untuk guru SD, SMP, SMK, MA & SMA<br />sesuai Kurikulum Merdeka & K-13.
             </p>
 
-            {/* Kurikulum toggle */}
-            <div style={{ display:"inline-flex", background:C.track, borderRadius:8, padding:3, gap:2, marginBottom:20 }}>
+            {/* Kurikulum toggle -- pill terpilih diisi warna accent penuh
+                (bukan cuma beda cardBg+shadow tipis) supaya kontrasnya tetap
+                jelas kelihatan di kedua tema, termasuk tema gelap di mana
+                shadow hampir tak terlihat di atas latar gelap. */}
+            <div style={{ display:"inline-flex", background:C.track, border:`1px solid ${C.border}`, borderRadius:9, padding:3, gap:2, marginBottom:20 }}>
               {KURIKULUM.map(k => (
-                <button key={k} onClick={() => handleKurikulumChange(k)} style={{ background:kurikulum === k ? C.cardBg : "none", border:"none", cursor:"pointer", fontSize:12, fontWeight:600, padding:"5px 12px", borderRadius:6, color:kurikulum === k ? C.accent : C.textSecondary, boxShadow:kurikulum === k ? C.shadow : "none" }}>
+                <button key={k} onClick={() => handleKurikulumChange(k)} style={{ background:kurikulum === k ? C.accent : "none", border:"none", cursor:"pointer", fontSize:12, fontWeight:700, padding:"6px 14px", borderRadius:6, color:kurikulum === k ? "#fff" : C.textSecondary }}>
                   {k}
                 </button>
               ))}

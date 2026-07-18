@@ -30,7 +30,7 @@ function buildBaseInfo({ mapel, kelas, topik, difficulty, kurikulum, fase }: Bas
   const kurikulumNote = kurikulum === 'Kurikulum Merdeka'
     ? `Fase: ${fase}. Sesuaikan dengan CP dan TP Kurikulum Merdeka.`
     : kurikulum === 'Kurikulum Cambridge'
-    ? 'Sesuaikan dengan standar Cambridge International Curriculum (gaya soal, istilah, dan tingkat berpikir ala Cambridge English). Tulis soal, opsi jawaban, dan pembahasan dalam Bahasa Inggris, kecuali diminta lain.'
+    ? 'Sesuaikan dengan standar Cambridge International Curriculum (gaya soal, istilah, dan tingkat berpikir ala Cambridge English). Tulis soal dan opsi jawaban dalam Bahasa Inggris, kecuali diminta lain -- TAPI bagian Pembahasan tetap wajib Bahasa Indonesia (lihat aturan PENTING di bawah).'
     : 'Sesuaikan dengan KD Kurikulum Nasional (K-13).'
 
   return `
@@ -110,6 +110,7 @@ PENTING – Format output wajib diikuti:
 - Setiap tipe soal diawali dengan heading: # [NAMA TIPE] (contoh: # PILIHAN GANDA)
 - Penomoran ulang dari 1 untuk setiap tipe
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
+- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia untuk SEMUA tipe soal dan SEMUA kurikulum, termasuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia
 - Langsung mulai tanpa pengantar apapun\n\n`
 
   for (const [key, count] of entries) {
@@ -134,6 +135,7 @@ PENTING:
 - Tulis dalam teks polos murni
 - Kunci jawaban dan pembahasan WAJIB disertakan sesuai format di atas
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
+- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia, termasuk untuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia
 
 Buat soal sekarang:`
 }
