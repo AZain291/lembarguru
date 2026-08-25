@@ -9,6 +9,7 @@ import { ToolIcon } from "@/components/tools/ToolIcon";
 import { BLOG_ARTICLES } from "@/lib/blog";
 import { getMapelOptions, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
 import ReferralBanner from "@/components/ReferralBanner";
+import { illustrationSvg, isIllustrationSpec, type IllustrationSpec } from "@/lib/illustration";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -22,6 +23,7 @@ interface Question {
   answer: string;       // diisi untuk pilihan_ganda dan benar_salah
   pembahasan: string;   // selalu ada
   type: string;         // tipe soal per-item
+  illustration?: IllustrationSpec; // opsional, cuma soal yang butuh diagram
 }
 interface MixedConfig {
   pilihan_ganda: number;
@@ -192,6 +194,17 @@ function parseQuestions(text: string, defaultType = "pilihan_ganda"): Question[]
 
     const pm = line.match(/^(?:pembahasan|penjelasan|alasan|diskusi)\s*:?\s*(.+)/i);
     if (pm) { cur.pembahasan = pm[1].trim(); continue; }
+
+    const im = line.match(/^ilustrasi\s*:?\s*(\{.+\})\s*$/i);
+    if (im) {
+      try {
+        const parsed = JSON.parse(im[1]);
+        if (isIllustrationSpec(parsed)) cur.illustration = parsed;
+      } catch {
+        // JSON tidak valid -- lewati saja, soal tetap tampil tanpa ilustrasi
+      }
+      continue;
+    }
 
     if (cur.pembahasan) {
       // Sudah masuk bagian pembahasan -- baris lain (termasuk yang tadinya
@@ -1173,7 +1186,13 @@ export default function LembarGuruApp() {
                           {TYPES.find(t => t.v === q.type)?.l ?? q.type}
                         </span>
                       </div>
-                      <div style={{ fontSize:14, fontWeight:500, marginBottom:q.options.length ? 9 : 0, color:C.textPrimary }}>{q.text}</div>
+                      <div style={{ fontSize:14, fontWeight:500, marginBottom:(q.options.length || q.illustration) ? 9 : 0, color:C.textPrimary }}>{q.text}</div>
+                      {q.illustration && (
+                        <div
+                          style={{ marginBottom:9, maxWidth:320, background:C.hoverRow, borderRadius:8, padding:8 }}
+                          dangerouslySetInnerHTML={{ __html: illustrationSvg(q.illustration) }}
+                        />
+                      )}
                       {q.options.length > 0 && (
                         <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                           {q.options.map(o => (

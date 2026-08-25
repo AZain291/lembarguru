@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, BorderStyle, WidthType } from 'docx'
+import { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, BorderStyle, WidthType } from 'docx'
+import { illustrationSvg, illustrationDimensions, type IllustrationSpec } from '@/lib/illustration'
+import { svgToPng } from '@/utils/svgToPng'
 
 const HAS_ANSWER_TYPES = new Set(['pilihan_ganda', 'benar_salah'])
 
@@ -10,6 +12,34 @@ interface Question {
   answer: string
   pembahasan: string
   type: string
+  illustration?: IllustrationSpec
+}
+
+// Word butuh fallback PNG untuk gambar SVG (lihat svgToPng.ts) -- dibungkus
+// jadi satu Paragraph siap-pakai supaya loop generate soal di bawah tetap
+// ringkas. Kegagalan convert (mis. spec aneh yang lolos validasi ringan di
+// client) tidak boleh menggagalkan seluruh export -- soal itu cuma tampil
+// tanpa ilustrasi.
+async function illustrationParagraph(spec: IllustrationSpec): Promise<Paragraph | null> {
+  try {
+    const svg = illustrationSvg(spec)
+    const { width, height } = illustrationDimensions(spec)
+    const png = await svgToPng(svg, width)
+    return new Paragraph({
+      spacing: { before: 80, after: 80 },
+      children: [
+        new ImageRun({
+          type: 'svg',
+          data: svg,
+          fallback: { type: 'png', data: png },
+          transformation: { width, height },
+        }),
+      ],
+    })
+  } catch (e) {
+    console.error('[export-docx] gagal render ilustrasi:', e)
+    return null
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -67,6 +97,10 @@ export async function POST(request: NextRequest) {
           spacing: { before: 200 },
         })
       )
+      if (q.illustration) {
+        const imgParagraph = await illustrationParagraph(q.illustration)
+        if (imgParagraph) children.push(imgParagraph)
+      }
       if (q.options.length > 0) {
         for (const opt of q.options) {
           children.push(

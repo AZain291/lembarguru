@@ -41,6 +41,24 @@ Kurikulum: ${kurikulum} – ${kurikulumNote}
 Tingkat kesulitan: ${difficulty || 'Campuran'}`
 }
 
+// Instruksi opsional untuk ilustrasi soal -- diagram SEDERHANA (segitiga,
+// persegi/persegi panjang, lingkaran, garis bilangan, grafik batang) yang
+// digambar ulang dari data numerik di baris "Ilustrasi:" ini oleh
+// illustrationSvg() (src/lib/illustration.ts), BUKAN gambar AI/foto. Baris
+// ini di-parse client (parseQuestions() di LembarGuruApp.tsx) & server
+// (splitSoalBlocks() ikut menyimpannya apa adanya ke Bank Soal). Ditaruh di
+// bagian PENTING (bukan di format soal per tipe) supaya berlaku sama untuk
+// semua tipe soal & tetap satu baris per soal, gampang di-regex.
+const ILLUSTRATION_RULES = `
+- WAJIB tambahkan SATU baris tambahan setelah "Pembahasan:" berformat persis "Ilustrasi: {JSON satu baris}" pada soal yang cocok salah satu pola di bawah -- ini bukan saran opsional, JANGAN dilewatkan kalau polanya cocok (pilih field yang relevan saja, JSON harus valid & satu baris, TANPA markdown code fence):
+  * Soal menyebutkan panjang SEMUA sisi sebuah segitiga (mis. "sisi-sisinya 13 cm, 14 cm, 15 cm" atau soal Pythagoras/luas segitiga/Heron): {"type":"triangle","sideAB":13,"sideBC":14,"sideCA":15,"labelA":"A","labelB":"B","labelC":"C","rightAngleAt":"B","unit":"cm"} -- rightAngleAt & unit opsional.
+  * Soal menyebutkan panjang & lebar sebuah persegi/persegi panjang: {"type":"rectangle","width":8,"height":5,"unit":"cm"}
+  * Soal menyebutkan jari-jari/diameter sebuah lingkaran: {"type":"circle","radius":7,"unit":"cm"} atau {"type":"circle","diameter":14,"unit":"cm"}
+  * Soal minta menempatkan/membandingkan titik pada garis bilangan: {"type":"number_line","min":-10,"max":10,"points":[{"value":3,"label":"A"},{"value":-2,"label":"B"}]}
+  * Soal punya data kategori-nilai yang dibaca dari grafik (mis. "grafik berikut menunjukkan..."): {"type":"bar_chart","data":[{"label":"Senin","value":12},{"label":"Selasa","value":18}],"yLabel":"Jumlah siswa"}
+  * Soal minta pembagian dikerjakan dengan cara bersusun/porogapit, ATAU inti soal pilihan-ganda/isian adalah satu pembagian bilangan bulat langsung: {"type":"long_division","dividend":168,"divisor":24} -- cukup kirim dividend & divisor mentah, JANGAN hitung/tulis langkah pembagiannya sendiri karena digambar ulang otomatis dari dua angka itu.
+- Kalau tidak ada polanya yang cocok (soal bacaan, hafalan, konsep abstrak, cerita tanpa data bentuk/angka), JANGAN tulis baris "Ilustrasi:" sama sekali.`
+
 // Instruksi notasi wajib untuk semua tipe soal -- dipakai baik di prompt
 // campuran maupun single-type. Soal/pembahasan dirender apa adanya sebagai
 // teks polos di web (LembarGuruApp.tsx) maupun di export .docx
@@ -54,7 +72,8 @@ const NOTASI_RULES = `
   * Rumus kimia (indeks jumlah atom): pakai karakter subscript asli, misal H₂O, CO₂, H₂SO₄ (bukan H2O, CO2, H2SO4). Karakter yang tersedia: ₀₁₂₃₄₅₆₇₈₉ ₊₋₌₍₎.
   * Simbol matematika lain: × untuk perkalian (bukan x atau *), ÷ untuk pembagian, √ untuk akar, π, ° (derajat), ≤ ≥ ≠ ≈ ∞ ∑ ∆, dan pecahan ditulis dengan "/" biasa (mis. 3/4) kecuali ada karakter Unicode pecahan yang pas (½ ¼ ¾).
   * Kalau pangkat/indeks tidak punya karakter Unicode yang persis (misal pangkat berupa variabel atau ekspresi panjang seperti (2n+1)), tulis sedekat mungkin ke notasi baku tanpa tanda "^" atau "_" mentah -- contoh: tulis "pangkat (2n+1)" atau gunakan huruf superscript yang tersedia (ⁿ, ˣ, dst) kalau ada.
-- Hitung dan verifikasi jawaban (terutama soal hitungan/angka) di dalam kepala SEBELUM menulis apa pun untuk soal itu. JANGAN tampilkan proses berpikir ulang atau koreksi di dalam output (contoh yang DILARANG: "namun jika...", "mari koreksi", "sebenarnya jawaban yang benar adalah..."). Setiap bagian -- opsi jawaban, "Jawaban:", "Pembahasan:" -- HANYA ditulis SATU KALI per soal, langsung versi final yang sudah benar.`
+- Hitung dan verifikasi jawaban (terutama soal hitungan/angka) di dalam kepala SEBELUM menulis apa pun untuk soal itu. JANGAN tampilkan proses berpikir ulang atau koreksi di dalam output (contoh yang DILARANG: "namun jika...", "mari koreksi", "sebenarnya jawaban yang benar adalah..."). Setiap bagian -- opsi jawaban, "Jawaban:", "Pembahasan:" -- HANYA ditulis SATU KALI per soal, langsung versi final yang sudah benar.
+${ILLUSTRATION_RULES}`
 const PG_FORMAT = `
 Untuk PILIHAN GANDA:
 1. [teks soal]
