@@ -41,6 +41,19 @@ Kurikulum: ${kurikulum} – ${kurikulumNote}
 Tingkat kesulitan: ${difficulty || 'Campuran'}`
 }
 
+// Instruksi notasi wajib untuk semua tipe soal -- dipakai baik di prompt
+// campuran maupun single-type. Soal/pembahasan dirender apa adanya sebagai
+// teks polos di web (LembarGuruApp.tsx) maupun di export .docx
+// (export-docx/route.ts pakai TextRun{text} biasa, tidak ada parsing markup),
+// jadi satu-satunya cara pangkat/simbol tampil benar di kedua tempat itu
+// adalah minta model langsung menulis karakter Unicode superscript/subscript
+// yang sebenarnya, bukan notasi ASCII kasar seperti "^" atau "x2"/"H2O".
+const NOTASI_RULES = `
+- Notasi matematika, kimia, dan rumus sains WAJIB pakai karakter Unicode yang benar, bukan notasi ASCII kasar:
+  * Pangkat/eksponen: pakai karakter superscript asli, misal x² (bukan x^2 atau x2), 10³ (bukan 10^3), a⁻¹ (bukan a^-1). Karakter yang tersedia: ⁰¹²³⁴⁵⁶⁷⁸⁹ ⁺⁻⁼⁽⁾ ⁿ ⁱ.
+  * Rumus kimia (indeks jumlah atom): pakai karakter subscript asli, misal H₂O, CO₂, H₂SO₄ (bukan H2O, CO2, H2SO4). Karakter yang tersedia: ₀₁₂₃₄₅₆₇₈₉ ₊₋₌₍₎.
+  * Simbol matematika lain: × untuk perkalian (bukan x atau *), ÷ untuk pembagian, √ untuk akar, π, ° (derajat), ≤ ≥ ≠ ≈ ∞ ∑ ∆, dan pecahan ditulis dengan "/" biasa (mis. 3/4) kecuali ada karakter Unicode pecahan yang pas (½ ¼ ¾).
+  * Kalau pangkat/indeks tidak punya karakter Unicode yang persis (misal pangkat berupa variabel atau ekspresi panjang seperti (2n+1)), tulis sedekat mungkin ke notasi baku tanpa tanda "^" atau "_" mentah -- contoh: tulis "pangkat (2n+1)" atau gunakan huruf superscript yang tersedia (ⁿ, ˣ, dst) kalau ada.`
 const PG_FORMAT = `
 Untuk PILIHAN GANDA:
 1. [teks soal]
@@ -110,7 +123,7 @@ PENTING – Format output wajib diikuti:
 - Setiap tipe soal diawali dengan heading: # [NAMA TIPE] (contoh: # PILIHAN GANDA)
 - Penomoran ulang dari 1 untuk setiap tipe
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
-- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia untuk SEMUA tipe soal dan SEMUA kurikulum, termasuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia
+- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia untuk SEMUA tipe soal dan SEMUA kurikulum, termasuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia${NOTASI_RULES}
 - Langsung mulai tanpa pengantar apapun\n\n`
 
   for (const [key, count] of entries) {
@@ -135,7 +148,7 @@ PENTING:
 - Tulis dalam teks polos murni
 - Kunci jawaban dan pembahasan WAJIB disertakan sesuai format di atas
 - Kalau soal berisi daftar langkah/urutan di dalam teks soal (mis. soal flowchart/algoritma), JANGAN tulis daftar itu dengan angka+titik ("1. ... 2. ...") karena akan tertukar dengan nomor soal -- pakai huruf/angka dalam kurung, contoh (1) ... (2) ..., atau tanda hubung "-"
-- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia, termasuk untuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia
+- Bagian "Pembahasan" WAJIB ditulis dalam Bahasa Indonesia, termasuk untuk soal mapel Bahasa Inggris atau Kurikulum Cambridge yang teks soal/opsi jawabannya berbahasa Inggris -- cuma bagian Pembahasan yang tetap Bahasa Indonesia, supaya mudah dipahami guru & siswa Indonesia${NOTASI_RULES}
 
 Buat soal sekarang:`
 }

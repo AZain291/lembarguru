@@ -38,6 +38,8 @@ Topik/materi: ${topik}
 Alokasi waktu: ${alokasi_waktu || '2 x 35 menit'}
 ${tujuan ? `Tujuan pembelajaran yang diinginkan: ${tujuan}` : 'Tujuan pembelajaran: tentukan sendiri sesuai topik dan jenjang.'}
 
+Kalau ada notasi matematika/kimia, pakai karakter Unicode superscript/subscript asli (mis. x², H₂O), bukan notasi ASCII kasar (x^2, H2O).
+
 Kembalikan HANYA JSON valid (tanpa markdown, tanpa penjelasan tambahan) persis dengan bentuk berikut:
 {
   "judul": string,

@@ -38,6 +38,15 @@ function LoginInner() {
             name: name.trim(),
             phone: phone.trim(),
           })
+          try {
+            await fetch('/api/notify/new-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email, name: name.trim(), phone: phone.trim() }),
+            })
+          } catch {
+            // gagal kirim notifikasi admin tidak boleh menggagalkan proses daftar
+          }
         }
         setMessage('Cek email untuk konfirmasi akun!')
       }

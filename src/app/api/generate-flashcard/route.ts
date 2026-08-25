@@ -37,6 +37,8 @@ Topik: ${topik}
 
 Setiap kartu punya sisi depan (pertanyaan/istilah singkat) dan sisi belakang (jawaban/penjelasan singkat, maks 2 kalimat).
 
+Kalau ada notasi matematika/kimia, pakai karakter Unicode superscript/subscript asli (mis. x², H₂O), bukan notasi ASCII kasar (x^2, H2O).
+
 Kembalikan HANYA JSON valid (tanpa markdown, tanpa penjelasan tambahan) persis dengan bentuk berikut:
 {
   "judul": string,

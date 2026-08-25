@@ -67,6 +67,18 @@ function RegisterInner() {
       localStorage.removeItem("lg_ref_code");
     }
 
+    if (data.user) {
+      try {
+        await fetch("/api/notify/new-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, name: nama }),
+        });
+      } catch {
+        // gagal kirim notifikasi admin tidak boleh menggagalkan proses daftar
+      }
+    }
+
     setLoading(false);
     router.push("/verifikasi-email");
   }
