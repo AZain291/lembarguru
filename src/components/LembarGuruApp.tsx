@@ -175,7 +175,17 @@ function parseQuestions(text: string, defaultType = "pilihan_ganda"): Question[]
     if (!cur) continue;
 
     const om = line.match(/^([a-dA-D])[.)]\s+(.+)/);
-    if (om) { cur.options.push({ k: om[1].toUpperCase(), t: om[2] }); continue; }
+    if (om) {
+      // AI kadang "mikir ulang" di tengah jawaban (mis. salah hitung lalu
+      // mengoreksi diri) dan menulis ulang blok opsi yang sama -- update opsi
+      // yang sudah ada alih-alih menumpuk duplikat supaya tidak tampil 8
+      // pilihan untuk 1 soal.
+      const key = om[1].toUpperCase();
+      const existing = cur.options.find(o => o.k === key);
+      if (existing) existing.t = om[2];
+      else cur.options.push({ k: key, t: om[2] });
+      continue;
+    }
 
     const jm = line.match(/^(?:jawab(?:an)?|kunci|answer)\s*:?\s*(.+)/i);
     if (jm) { cur.answer = jm[1].trim(); continue; }

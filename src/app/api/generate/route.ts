@@ -53,7 +53,8 @@ const NOTASI_RULES = `
   * Pangkat/eksponen: pakai karakter superscript asli, misal x² (bukan x^2 atau x2), 10³ (bukan 10^3), a⁻¹ (bukan a^-1). Karakter yang tersedia: ⁰¹²³⁴⁵⁶⁷⁸⁹ ⁺⁻⁼⁽⁾ ⁿ ⁱ.
   * Rumus kimia (indeks jumlah atom): pakai karakter subscript asli, misal H₂O, CO₂, H₂SO₄ (bukan H2O, CO2, H2SO4). Karakter yang tersedia: ₀₁₂₃₄₅₆₇₈₉ ₊₋₌₍₎.
   * Simbol matematika lain: × untuk perkalian (bukan x atau *), ÷ untuk pembagian, √ untuk akar, π, ° (derajat), ≤ ≥ ≠ ≈ ∞ ∑ ∆, dan pecahan ditulis dengan "/" biasa (mis. 3/4) kecuali ada karakter Unicode pecahan yang pas (½ ¼ ¾).
-  * Kalau pangkat/indeks tidak punya karakter Unicode yang persis (misal pangkat berupa variabel atau ekspresi panjang seperti (2n+1)), tulis sedekat mungkin ke notasi baku tanpa tanda "^" atau "_" mentah -- contoh: tulis "pangkat (2n+1)" atau gunakan huruf superscript yang tersedia (ⁿ, ˣ, dst) kalau ada.`
+  * Kalau pangkat/indeks tidak punya karakter Unicode yang persis (misal pangkat berupa variabel atau ekspresi panjang seperti (2n+1)), tulis sedekat mungkin ke notasi baku tanpa tanda "^" atau "_" mentah -- contoh: tulis "pangkat (2n+1)" atau gunakan huruf superscript yang tersedia (ⁿ, ˣ, dst) kalau ada.
+- Hitung dan verifikasi jawaban (terutama soal hitungan/angka) di dalam kepala SEBELUM menulis apa pun untuk soal itu. JANGAN tampilkan proses berpikir ulang atau koreksi di dalam output (contoh yang DILARANG: "namun jika...", "mari koreksi", "sebenarnya jawaban yang benar adalah..."). Setiap bagian -- opsi jawaban, "Jawaban:", "Pembahasan:" -- HANYA ditulis SATU KALI per soal, langsung versi final yang sudah benar.`
 const PG_FORMAT = `
 Untuk PILIHAN GANDA:
 1. [teks soal]
@@ -153,8 +154,17 @@ PENTING:
 Buat soal sekarang:`
 }
 
+// Anggaran token diukur lewat percobaan nyata (bukan tebakan) -- 5 soal PG
+// Matematika tingkat olimpiade (banyak langkah hitung + pembahasan panjang)
+// ternyata makan ~2400 token sekali generate, jauh di atas budget lama
+// (180/soal, floor 1024) yang bikin API kepotong di tengah kalimat
+// (stop_reason "max_tokens") pada soal & kunci jawaban terakhir -- itu
+// penyebab laporan user "cuma jadi 4 soal, pembahasan cuma sampai soal 3".
+// Angka di bawah punya headroom lebih besar; menaikkan cap TIDAK menambah
+// biaya kalau modelnya tidak sampai memakainya (Anthropic cuma nge-bill
+// token yang benar-benar di-generate, bukan cap-nya).
 function tokensFor(count: number, essayHeavy: boolean): number {
-  return Math.min(8192, Math.max(1024, Math.round(count * (essayHeavy ? 400 : 180))))
+  return Math.min(16000, Math.max(2048, Math.round(count * (essayHeavy ? 900 : 600))))
 }
 
 async function callModel(model: string, prompt: string, maxTokens: number): Promise<{ text: string; tokens: number }> {
@@ -245,11 +255,20 @@ export async function POST(request: NextRequest) {
       totalTokens = result.tokens
     }
 
+    // Hitung soal yang BENAR-BENAR jadi dari hasil generate -- kalau AI
+    // kepotong di tengah (mis. kena batas token) atau gagal memenuhi jumlah
+    // yang diminta, kuota harian user cuma boleh berkurang sebesar yang
+    // benar-benar dia terima, bukan sebesar yang diminta di awal (totalSoal).
+    // splitSoalBlocks() sama persis dengan parser client (parseQuestions()
+    // di LembarGuruApp.tsx) soal apa yang dianggap "satu soal utuh".
+    const blocks = splitSoalBlocks(hasil)
+    const actualCount = blocks.length > 0 ? Math.min(blocks.length, totalSoal) : totalSoal
+
     // Simpan jumlah soal yang digenerate
     await logUsage(identity, {
       action: 'generate',
       tokensUsed: totalTokens,
-      questionsCount: totalSoal,
+      questionsCount: actualCount,
       status: 'success',
     })
 
@@ -257,7 +276,6 @@ export async function POST(request: NextRequest) {
     // lewat /api/bank-soal). Gagal simpan tidak boleh menggagalkan response
     // ke user -- generate soal sudah berhasil terlepas dari ini.
     try {
-      const blocks = splitSoalBlocks(hasil)
       const generatedBy = identity.type === 'guest' ? null : identity.identifier
       if (blocks.length > 0) {
         const admin = createAdminClient()
