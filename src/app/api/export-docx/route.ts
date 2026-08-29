@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
-import { Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, BorderStyle, WidthType } from 'docx'
+import {
+  Document, Packer, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType,
+  Table, TableRow, TableCell, BorderStyle, WidthType,
+  Math as DocxMath, MathFraction, MathRun, type ParagraphChild,
+} from 'docx'
 import { illustrationSvg, illustrationDimensions, type IllustrationSpec } from '@/lib/illustration'
 import { svgToPng } from '@/utils/svgToPng'
+import { splitFractionSegments } from '@/lib/fraction'
 
 const HAS_ANSWER_TYPES = new Set(['pilihan_ganda', 'benar_salah'])
 
@@ -13,6 +18,26 @@ interface Question {
   pembahasan: string
   type: string
   illustration?: IllustrationSpec
+}
+
+// Teks soal/opsi/pembahasan bisa berisi marker pecahan "{{2/3}}" (lihat
+// src/lib/fraction.ts) -- dipecah di sini jadi TextRun biasa diselingi
+// objek Math/MathFraction ASLI Word (OMML), bukan gambar. Ini lebih baik
+// daripada raster: hasilnya pecahan yang bisa diedit & auto-scale
+// mengikuti font, persis seperti dibuat manual lewat equation editor Word.
+function buildTextRuns(text: string, opts: { bold?: boolean; color?: string; italics?: boolean } = {}): ParagraphChild[] {
+  return splitFractionSegments(text).map((seg) =>
+    seg.type === 'fraction'
+      ? new DocxMath({
+          children: [
+            new MathFraction({
+              numerator: [new MathRun(seg.numerator)],
+              denominator: [new MathRun(seg.denominator)],
+            }),
+          ],
+        })
+      : new TextRun({ text: seg.value, ...opts })
+  )
 }
 
 // Word butuh fallback PNG untuk gambar SVG (lihat svgToPng.ts) -- dibungkus
@@ -92,7 +117,7 @@ export async function POST(request: NextRequest) {
         new Paragraph({
           children: [
             new TextRun({ text: `${i + 1}. `, bold: true }),
-            new TextRun({ text: q.text }),
+            ...buildTextRuns(q.text),
           ],
           spacing: { before: 200 },
         })
@@ -107,7 +132,7 @@ export async function POST(request: NextRequest) {
             new Paragraph({
               children: [
                 new TextRun({ text: `    ${opt.k}. `, bold: true }),
-                new TextRun({ text: opt.t }),
+                ...buildTextRuns(opt.t),
               ],
             })
           )
@@ -171,7 +196,7 @@ export async function POST(request: NextRequest) {
               HAS_ANSWER_TYPES.has(q.type) && q.answer
                 ? new TextRun({ text: `(Jawaban: ${q.answer}) `, color: '2563eb', bold: true })
                 : new TextRun({ text: '' }),
-              new TextRun({ text: q.pembahasan }),
+              ...buildTextRuns(q.pembahasan),
             ],
             spacing: { before: 150 },
           })

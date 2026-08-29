@@ -10,6 +10,8 @@ import { BLOG_ARTICLES } from "@/lib/blog";
 import { getMapelOptions, KELAS_LIST, SD_TEMA } from "@/lib/subjectOptions";
 import ReferralBanner from "@/components/ReferralBanner";
 import { illustrationSvg, isIllustrationSpec, type IllustrationSpec } from "@/lib/illustration";
+import { stripFractionMarkers } from "@/lib/fraction";
+import { renderWithFractions } from "@/components/FractionInline";
 
 // ── TYPES ────────────────────────────────────────────────────────────────────
 type Tier = "guest" | "free" | "pro" | "guru";
@@ -484,10 +486,11 @@ export default function LembarGuruApp() {
     ].filter(Boolean);
     let text = headerLines.join("\n") + "\n\n";
 
-    // Soal
+    // Soal -- teks polos (clipboard) tidak bisa menampilkan pecahan bersusun,
+    // balik marker "{{2/3}}" jadi "2/3" biasa alih-alih tersalin mentah.
     text += questions.map((q, i) => {
-      let s = `${i + 1}. ${q.text}\n`;
-      if (q.options.length) s += q.options.map(o => `   ${o.k}. ${o.t}`).join("\n") + "\n";
+      let s = `${i + 1}. ${stripFractionMarkers(q.text)}\n`;
+      if (q.options.length) s += q.options.map(o => `   ${o.k}. ${stripFractionMarkers(o.t)}`).join("\n") + "\n";
       return s;
     }).join("\n");
 
@@ -506,7 +509,7 @@ export default function LembarGuruApp() {
     if (hasPembahasan) {
       text += "\n\n=== PEMBAHASAN ===\n";
       questions.forEach((q, i) => {
-        if (q.pembahasan) text += `${i + 1}. ${q.pembahasan}\n`;
+        if (q.pembahasan) text += `${i + 1}. ${stripFractionMarkers(q.pembahasan)}\n`;
       });
     }
 
@@ -1186,7 +1189,7 @@ export default function LembarGuruApp() {
                           {TYPES.find(t => t.v === q.type)?.l ?? q.type}
                         </span>
                       </div>
-                      <div style={{ fontSize:14, fontWeight:500, marginBottom:(q.options.length || q.illustration) ? 9 : 0, color:C.textPrimary }}>{q.text}</div>
+                      <div style={{ fontSize:14, fontWeight:500, marginBottom:(q.options.length || q.illustration) ? 9 : 0, color:C.textPrimary }}>{renderWithFractions(q.text)}</div>
                       {q.illustration && (
                         <div
                           style={{ marginBottom:9, maxWidth:320, background:C.hoverRow, borderRadius:8, padding:8 }}
@@ -1197,7 +1200,7 @@ export default function LembarGuruApp() {
                         <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
                           {q.options.map(o => (
                             <div key={o.k} style={{ fontSize:13, padding:"5px 9px", borderRadius:6, display:"flex", gap:7, background:C.hoverRow, color:C.textPrimary }}>
-                              <span style={{ fontWeight:700 }}>{o.k}.</span><span>{o.t}</span>
+                              <span style={{ fontWeight:700 }}>{o.k}.</span><span>{renderWithFractions(o.t)}</span>
                             </div>
                           ))}
                         </div>
@@ -1245,7 +1248,7 @@ export default function LembarGuruApp() {
                                         <span style={{ color:C.correctText, marginLeft:8 }}>— Jawaban: {q.answer}</span>
                                       )}
                                     </div>
-                                    <div style={{ fontSize:13, color:C.textPrimary, lineHeight:1.6 }}>{q.pembahasan}</div>
+                                    <div style={{ fontSize:13, color:C.textPrimary, lineHeight:1.6 }}>{renderWithFractions(q.pembahasan)}</div>
                                   </div>
                                 ) : null
                               )}

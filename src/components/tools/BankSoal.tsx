@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { renderWithFractions } from '@/components/FractionInline';
+import { stripFractionMarkers } from '@/lib/fraction';
 
 interface SoalRow {
   id: string;
@@ -20,7 +22,10 @@ function formatSoalWithHeader(item: SoalRow): string {
   const header = [`Mata Pelajaran: ${item.mapel}`, item.kelas ? `Kelas: ${item.kelas}` : null]
     .filter(Boolean)
     .join('\n');
-  return `${header}\n\n${item.teks}`;
+  // Salin/cetak = teks polos, tidak bisa menampilkan pecahan bersusun --
+  // balik marker "{{2/3}}" jadi "2/3" biasa (lihat FractionInline.tsx untuk
+  // versi bersusun yang dipakai di tampilan layar).
+  return `${header}\n\n${stripFractionMarkers(item.teks)}`;
 }
 
 function escapeHtml(text: string): string {
@@ -146,7 +151,7 @@ export function BankSoal() {
                 {item.kelas && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">Kelas {item.kelas}</span>}
                 {item.kurikulum && <span className="rounded bg-paper-deep px-2 py-0.5 font-mono text-[11px] text-ink-soft">{item.kurikulum}</span>}
               </div>
-              <p className="whitespace-pre-wrap text-[13.5px] text-ink">{item.teks}</p>
+              <p className="whitespace-pre-wrap text-[13.5px] text-ink">{renderWithFractions(item.teks)}</p>
               <div className="mt-3 flex gap-2">
                 <Button variant="ghost" onClick={() => salin(item)}>Salin</Button>
                 <Button variant="ghost" onClick={() => cetak(item)}>Cetak</Button>
