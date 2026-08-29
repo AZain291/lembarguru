@@ -41,23 +41,34 @@ Kurikulum: ${kurikulum} – ${kurikulumNote}
 Tingkat kesulitan: ${difficulty || 'Campuran'}`
 }
 
-// Instruksi opsional untuk ilustrasi soal -- diagram SEDERHANA (segitiga,
-// persegi/persegi panjang, lingkaran, garis bilangan, grafik batang) yang
-// digambar ulang dari data numerik di baris "Ilustrasi:" ini oleh
-// illustrationSvg() (src/lib/illustration.ts), BUKAN gambar AI/foto. Baris
-// ini di-parse client (parseQuestions() di LembarGuruApp.tsx) & server
-// (splitSoalBlocks() ikut menyimpannya apa adanya ke Bank Soal). Ditaruh di
-// bagian PENTING (bukan di format soal per tipe) supaya berlaku sama untuk
-// semua tipe soal & tetap satu baris per soal, gampang di-regex.
+// Instruksi opsional untuk ilustrasi soal -- diagram SEDERHANA yang digambar
+// ulang dari data/label di baris "Ilustrasi:" ini oleh illustrationSvg()
+// (src/lib/illustration.ts), BUKAN gambar AI/foto -- berlaku untuk SEMUA
+// mapel, bukan cuma Matematika (lihat tipe generik concentric/chain/
+// labeled_boxes di bawah untuk IPA/IPS/kejuruan dll). Baris ini di-parse
+// client (parseQuestions() di LembarGuruApp.tsx) & server (splitSoalBlocks()
+// ikut menyimpannya apa adanya ke Bank Soal). Ditaruh di bagian PENTING
+// (bukan di format soal per tipe) supaya berlaku sama untuk semua tipe soal
+// & tetap satu baris per soal, gampang di-regex.
 const ILLUSTRATION_RULES = `
-- WAJIB tambahkan SATU baris tambahan setelah "Pembahasan:" berformat persis "Ilustrasi: {JSON satu baris}" pada soal yang cocok salah satu pola di bawah -- ini bukan saran opsional, JANGAN dilewatkan kalau polanya cocok (pilih field yang relevan saja, JSON harus valid & satu baris, TANPA markdown code fence):
-  * Soal menyebutkan panjang SEMUA sisi sebuah segitiga (mis. "sisi-sisinya 13 cm, 14 cm, 15 cm" atau soal Pythagoras/luas segitiga/Heron): {"type":"triangle","sideAB":13,"sideBC":14,"sideCA":15,"labelA":"A","labelB":"B","labelC":"C","rightAngleAt":"B","unit":"cm"} -- rightAngleAt & unit opsional.
-  * Soal menyebutkan panjang & lebar sebuah persegi/persegi panjang: {"type":"rectangle","width":8,"height":5,"unit":"cm"}
-  * Soal menyebutkan jari-jari/diameter sebuah lingkaran: {"type":"circle","radius":7,"unit":"cm"} atau {"type":"circle","diameter":14,"unit":"cm"}
-  * Soal minta menempatkan/membandingkan titik pada garis bilangan: {"type":"number_line","min":-10,"max":10,"points":[{"value":3,"label":"A"},{"value":-2,"label":"B"}]}
-  * Soal punya data kategori-nilai yang dibaca dari grafik (mis. "grafik berikut menunjukkan..."): {"type":"bar_chart","data":[{"label":"Senin","value":12},{"label":"Selasa","value":18}],"yLabel":"Jumlah siswa"}
-  * Soal minta pembagian dikerjakan dengan cara bersusun/porogapit, ATAU inti soal pilihan-ganda/isian adalah satu pembagian bilangan bulat langsung: {"type":"long_division","dividend":168,"divisor":24} -- cukup kirim dividend & divisor mentah, JANGAN hitung/tulis langkah pembagiannya sendiri karena digambar ulang otomatis dari dua angka itu.
-- Kalau tidak ada polanya yang cocok (soal bacaan, hafalan, konsep abstrak, cerita tanpa data bentuk/angka), JANGAN tulis baris "Ilustrasi:" sama sekali.`
+- WAJIB tambahkan SATU baris tambahan setelah "Pembahasan:" berformat persis "Ilustrasi: {JSON satu baris}" pada soal yang cocok salah satu pola di bawah -- ini bukan saran opsional, JANGAN dilewatkan kalau polanya cocok (pilih field yang relevan saja, JSON harus valid & satu baris, TANPA markdown code fence). Diagramnya SEDERHANA/skematik, bukan gambar realistis -- fokusnya membantu membayangkan konteks soal, bukan akurasi visual sempurna.
+  Matematika -- bangun datar/ruang & data:
+  * Segitiga (SEMUA sisi disebutkan, mis. "sisi-sisinya 13 cm, 14 cm, 15 cm", soal Pythagoras/luas/Heron): {"type":"triangle","sideAB":13,"sideBC":14,"sideCA":15,"labelA":"A","labelB":"B","labelC":"C","rightAngleAt":"B","unit":"cm"} -- rightAngleAt & unit opsional.
+  * Persegi/persegi panjang: {"type":"rectangle","width":8,"height":5,"unit":"cm"}
+  * Lingkaran: {"type":"circle","radius":7,"unit":"cm"} atau {"type":"circle","diameter":14,"unit":"cm"}
+  * Kubus: {"type":"cube","side":5,"unit":"cm"}
+  * Balok: {"type":"cuboid","length":8,"width":4,"height":3,"unit":"cm"}
+  * Tabung: {"type":"cylinder","radius":3,"height":10,"unit":"cm"}
+  * Kerucut: {"type":"cone","radius":4,"height":9,"unit":"cm"}
+  * Bola: {"type":"sphere","radius":6,"unit":"cm"}
+  * Garis bilangan (titik/perbandingan bilangan) ATAU soal Fisika perpindahan/posisi lurus (mis. "benda bergerak dari titik A ke titik B"): {"type":"number_line","min":-10,"max":10,"points":[{"value":3,"label":"A"},{"value":-2,"label":"B"}]}
+  * Data kategori-nilai dari grafik (mis. "grafik berikut menunjukkan..."): {"type":"bar_chart","data":[{"label":"Senin","value":12},{"label":"Selasa","value":18}],"yLabel":"Jumlah siswa"}
+  * Pembagian bersusun/porogapit, ATAU inti soal pilihan-ganda/isian adalah satu pembagian bilangan bulat langsung: {"type":"long_division","dividend":168,"divisor":24} -- cukup kirim dividend & divisor mentah, JANGAN hitung/tulis langkah pembagiannya sendiri karena digambar ulang otomatis dari dua angka itu.
+  Semua mapel lain -- pakai salah satu template generik ini kalau soal menyebutkan struktur/bagian sesuatu yang bisa dibayangkan sebagai lapisan bersarang, rangkaian tersambung, atau daftar bagian:
+  * "concentric" (lapisan/struktur bersarang dari luar ke dalam) -- Biologi: sel, lapisan bumi/atmosfer, jaringan; Kimia: struktur atom (inti + kulit elektron). Urutkan "layers" dari PALING LUAR ke PALING DALAM. Titik kecil opsional (elektron, organel) ditaruh di salah satu layer lewat layerIndex (0 = layer pertama yang disebut di array). Contoh sel hewan: {"type":"concentric","layers":[{"label":"Membran sel"},{"label":"Sitoplasma"},{"label":"Inti sel"}]}. Contoh atom karbon (6 elektron, 2 kulit): {"type":"concentric","layers":[{"label":"Kulit elektron 2"},{"label":"Kulit elektron 1"},{"label":"Inti atom"}],"points":[{"layerIndex":0},{"layerIndex":0},{"layerIndex":0},{"layerIndex":0},{"layerIndex":1},{"layerIndex":1}]}.
+  * "chain" (node berlabel tersambung garis) -- Kimia: struktur molekul sederhana (atom sebagai node, ikatan sebagai bonds). {"type":"chain","nodes":[{"label":"H"},{"label":"O"},{"label":"H"}],"bonds":[{"from":0,"to":1},{"from":1,"to":2}]} untuk H₂O; untuk molekul dengan satu atom pusat (mis. CH₄), semua bonds mengarah dari node pusat ke node lain, tata letak otomatis jadi bintang.
+  * "labeled_boxes" (daftar bagian berlabel) -- Permesinan/Teknik: bagian-bagian mesin/komponen ("items":["Piston","Silinder","Katup"]); Proses/tahapan berurutan (IPA siklus air, IPS alur produksi, dll) pakai "flow":true supaya ada panah antar kotak menandakan urutan. Contoh bagian mesin (tanpa urutan): {"type":"labeled_boxes","items":["Piston","Silinder","Katup masuk","Poros engkol"]}. Contoh proses berurutan: {"type":"labeled_boxes","items":["Evaporasi","Kondensasi","Presipitasi"],"flow":true}.
+- Kalau tidak ada polanya yang cocok (soal bacaan, hafalan, konsep abstrak, cerita tanpa data bentuk/struktur/angka), JANGAN tulis baris "Ilustrasi:" sama sekali.`
 
 // Instruksi notasi wajib untuk semua tipe soal -- dipakai baik di prompt
 // campuran maupun single-type. Soal/pembahasan dirender apa adanya sebagai

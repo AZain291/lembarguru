@@ -16,13 +16,85 @@ export type IllustrationSpec =
   | { type: 'number_line'; min: number; max: number; points: { value: number; label?: string }[] }
   | { type: 'bar_chart'; data: { label: string; value: number }[]; yLabel?: string }
   | { type: 'long_division'; dividend: number; divisor: number }
+  // Bangun ruang -- pseudo-3D sederhana (bukan render 3D asli), cukup untuk
+  // memberi gambaran bentuk + label ukuran.
+  | { type: 'cube'; side: number; unit?: string }
+  | { type: 'cuboid'; length: number; width: number; height: number; unit?: string }
+  | { type: 'cylinder'; radius: number; height: number; unit?: string }
+  | { type: 'cone'; radius: number; height: number; unit?: string }
+  | { type: 'sphere'; radius: number; unit?: string }
+  // Template generik "beri label bagian-bagian X" lintas mapel non-matematika
+  // (lihat FRACTION_RULES-sejenis di generate/route.ts untuk kapan dipakai):
+  // lingkaran konsentris (sel, atom), rantai/bintang bersambung (molekul,
+  // rangkaian proses), kotak berlabel (bagian mesin, alur/tahapan).
+  | { type: 'concentric'; layers: { label: string }[]; points?: { label?: string; layerIndex: number }[] }
+  | { type: 'chain'; nodes: { label: string }[]; bonds?: { from: number; to: number }[] }
+  | { type: 'labeled_boxes'; items: string[]; flow?: boolean }
 
-const KNOWN_TYPES = new Set(['triangle', 'rectangle', 'circle', 'number_line', 'bar_chart', 'long_division'])
+const KNOWN_TYPES = new Set([
+  'triangle', 'rectangle', 'circle', 'number_line', 'bar_chart', 'long_division',
+  'cube', 'cuboid', 'cylinder', 'cone', 'sphere',
+  'concentric', 'chain', 'labeled_boxes',
+])
 
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v)
+}
+function isNonEmptyString(v: unknown): v is string {
+  return typeof v === 'string' && v.length > 0
+}
+
+// Validasi BENERAN per tipe, bukan cuma cek "type" dikenal -- AI kadang
+// menyimpang dari skema (mis. pernah kejadian labeled_boxes.items dikirim
+// sebagai [{label,desc}] alih-alih string[] mentah), dan kalau lolos ke
+// render function apa adanya, hasilnya bukan crash tapi teks sampah macam
+// "[object Object]" yang tampil ke user. Mending ditolak di sini (soal
+// tetap tampil, cuma tanpa ilustrasi) daripada tampil rusak.
 export function isIllustrationSpec(value: unknown): value is IllustrationSpec {
   if (!value || typeof value !== 'object') return false
-  const type = (value as { type?: unknown }).type
-  return typeof type === 'string' && KNOWN_TYPES.has(type)
+  const v = value as Record<string, unknown>
+  const type = v.type
+  if (typeof type !== 'string' || !KNOWN_TYPES.has(type)) return false
+
+  switch (type) {
+    case 'triangle':
+      return (v.sideAB === undefined || isFiniteNumber(v.sideAB))
+        && (v.sideBC === undefined || isFiniteNumber(v.sideBC))
+        && (v.sideCA === undefined || isFiniteNumber(v.sideCA))
+    case 'rectangle':
+      return isFiniteNumber(v.width) && isFiniteNumber(v.height)
+    case 'circle':
+      return (v.radius === undefined || isFiniteNumber(v.radius)) && (v.diameter === undefined || isFiniteNumber(v.diameter))
+    case 'number_line':
+      return isFiniteNumber(v.min) && isFiniteNumber(v.max) && Array.isArray(v.points)
+        && v.points.every((p) => p && typeof p === 'object' && isFiniteNumber((p as Record<string, unknown>).value))
+    case 'bar_chart':
+      return Array.isArray(v.data) && v.data.length > 0
+        && v.data.every((d) => d && typeof d === 'object' && isNonEmptyString((d as Record<string, unknown>).label) && isFiniteNumber((d as Record<string, unknown>).value))
+    case 'long_division':
+      return isFiniteNumber(v.dividend) && isFiniteNumber(v.divisor)
+    case 'cube':
+      return isFiniteNumber(v.side)
+    case 'cuboid':
+      return isFiniteNumber(v.length) && isFiniteNumber(v.width) && isFiniteNumber(v.height)
+    case 'cylinder':
+    case 'cone':
+      return isFiniteNumber(v.radius) && isFiniteNumber(v.height)
+    case 'sphere':
+      return isFiniteNumber(v.radius)
+    case 'concentric':
+      return Array.isArray(v.layers) && v.layers.length > 0
+        && v.layers.every((l) => l && typeof l === 'object' && isNonEmptyString((l as Record<string, unknown>).label))
+        && (v.points === undefined || (Array.isArray(v.points) && v.points.every((p) => p && typeof p === 'object' && isFiniteNumber((p as Record<string, unknown>).layerIndex))))
+    case 'chain':
+      return Array.isArray(v.nodes) && v.nodes.length > 0
+        && v.nodes.every((n) => n && typeof n === 'object' && isNonEmptyString((n as Record<string, unknown>).label))
+        && (v.bonds === undefined || (Array.isArray(v.bonds) && v.bonds.every((b) => b && typeof b === 'object' && isFiniteNumber((b as Record<string, unknown>).from) && isFiniteNumber((b as Record<string, unknown>).to))))
+    case 'labeled_boxes':
+      return Array.isArray(v.items) && v.items.length > 0 && v.items.every((i) => isNonEmptyString(i))
+    default:
+      return false
+  }
 }
 
 export function escapeXml(text: string): string {
@@ -284,6 +356,221 @@ function renderLongDivision(spec: Extract<IllustrationSpec, { type: 'long_divisi
   `, width, height)
 }
 
+// ── Bangun ruang (pseudo-3D sederhana) ──────────────────────────────────────
+// Bukan render 3D asli -- cuma trik visual umum di buku pelajaran: sisi
+// depan digambar utuh, sisi atas/kanan sebagai jajar genjang hasil offset,
+// supaya kelihatan seperti bentuk ruang tanpa perlu engine 3D.
+function pseudo3DBox(fx: number, fy: number, fw: number, fh: number, dx: number, dy: number): string {
+  const TL = { x: fx, y: fy }, TR = { x: fx + fw, y: fy }, BR = { x: fx + fw, y: fy + fh }
+  const TLb = { x: fx + dx, y: fy - dy }, TRb = { x: fx + fw + dx, y: fy - dy }, BRb = { x: fx + fw + dx, y: fy + fh - dy }
+  return `
+    <polygon points="${TL.x},${TL.y} ${TR.x},${TR.y} ${TRb.x},${TRb.y} ${TLb.x},${TLb.y}" fill="#dbeafe" stroke="${STROKE}" stroke-width="1.5"/>
+    <polygon points="${TR.x},${TR.y} ${BR.x},${BR.y} ${BRb.x},${BRb.y} ${TRb.x},${TRb.y}" fill="#bfdbfe" stroke="${STROKE}" stroke-width="1.5"/>
+    <rect x="${fx}" y="${fy}" width="${fw}" height="${fh}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>
+  `
+}
+
+function renderCube(spec: Extract<IllustrationSpec, { type: 'cube' }>): string {
+  const fw = 120, fh = 120, dx = 36, dy = 26
+  const fx = 76, fy = 46
+  const unit = spec.unit ? ' ' + escapeXml(spec.unit) : ''
+  return svgWrap(`
+    ${pseudo3DBox(fx, fy, fw, fh, dx, dy)}
+    <text x="${fx + fw / 2}" y="${fy + fh + 20}" text-anchor="middle" font-size="13" fill="${TEXT}">s = ${fmtNum(spec.side)}${unit}</text>
+  `)
+}
+
+function renderCuboid(spec: Extract<IllustrationSpec, { type: 'cuboid' }>): string {
+  const maxDim = Math.max(spec.length, spec.width, spec.height, 0.001)
+  const scale = 130 / maxDim
+  const fw = Math.max(30, spec.length * scale)
+  const fh = Math.max(30, spec.height * scale)
+  const depthPx = Math.max(18, spec.width * scale)
+  const dx = depthPx * 0.75, dy = depthPx * 0.55
+  const fx = 60, fy = 50
+  const unit = spec.unit ? ' ' + escapeXml(spec.unit) : ''
+  return svgWrap(`
+    ${pseudo3DBox(fx, fy, fw, fh, dx, dy)}
+    <text x="${fx + fw / 2}" y="${fy + fh + 20}" text-anchor="middle" font-size="12" fill="${TEXT}">p = ${fmtNum(spec.length)}${unit}</text>
+    <text x="${fx - 8}" y="${fy + fh / 2}" text-anchor="end" font-size="12" fill="${TEXT}" transform="rotate(-90 ${fx - 8} ${fy + fh / 2})">t = ${fmtNum(spec.height)}${unit}</text>
+    <text x="${fx + fw + dx / 2 + 6}" y="${fy - dy / 2 - 4}" font-size="12" fill="${TEXT}">l = ${fmtNum(spec.width)}${unit}</text>
+  `)
+}
+
+function renderCylinder(spec: Extract<IllustrationSpec, { type: 'cylinder' }>): string {
+  const rx = 70, ry = 20, bodyH = 120
+  const cx = WIDTH / 2, topY = 52, bottomY = topY + bodyH
+  const unit = spec.unit ? ' ' + escapeXml(spec.unit) : ''
+  return svgWrap(`
+    <ellipse cx="${cx}" cy="${bottomY}" rx="${rx}" ry="${ry}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>
+    <line x1="${cx - rx}" y1="${topY}" x2="${cx - rx}" y2="${bottomY}" stroke="${STROKE}" stroke-width="2"/>
+    <line x1="${cx + rx}" y1="${topY}" x2="${cx + rx}" y2="${bottomY}" stroke="${STROKE}" stroke-width="2"/>
+    <ellipse cx="${cx}" cy="${topY}" rx="${rx}" ry="${ry}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>
+    <line x1="${cx}" y1="${topY}" x2="${cx + rx}" y2="${topY}" stroke="${STROKE}" stroke-width="1"/>
+    <text x="${cx + rx / 2}" y="${topY - 6}" text-anchor="middle" font-size="12" fill="${TEXT}">r = ${fmtNum(spec.radius)}${unit}</text>
+    <text x="${cx + rx + 10}" y="${(topY + bottomY) / 2}" font-size="12" fill="${TEXT}">t = ${fmtNum(spec.height)}${unit}</text>
+  `)
+}
+
+function renderCone(spec: Extract<IllustrationSpec, { type: 'cone' }>): string {
+  const rx = 70, ry = 20, bodyH = 120
+  const cx = WIDTH / 2, apexY = 52, bottomY = apexY + bodyH
+  const unit = spec.unit ? ' ' + escapeXml(spec.unit) : ''
+  return svgWrap(`
+    <ellipse cx="${cx}" cy="${bottomY}" rx="${rx}" ry="${ry}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>
+    <line x1="${cx}" y1="${apexY}" x2="${cx - rx}" y2="${bottomY}" stroke="${STROKE}" stroke-width="2"/>
+    <line x1="${cx}" y1="${apexY}" x2="${cx + rx}" y2="${bottomY}" stroke="${STROKE}" stroke-width="2"/>
+    <text x="${cx + rx / 2}" y="${bottomY + 16}" text-anchor="middle" font-size="12" fill="${TEXT}">r = ${fmtNum(spec.radius)}${unit}</text>
+    <text x="${cx + rx / 2 + 12}" y="${(apexY + bottomY) / 2}" font-size="12" fill="${TEXT}">t = ${fmtNum(spec.height)}${unit}</text>
+  `)
+}
+
+function renderSphere(spec: Extract<IllustrationSpec, { type: 'sphere' }>): string {
+  const r = 70, cx = WIDTH / 2, cy = HEIGHT / 2
+  const unit = spec.unit ? ' ' + escapeXml(spec.unit) : ''
+  return svgWrap(`
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="${FILL}" stroke="${STROKE}" stroke-width="2"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${r}" ry="${r * 0.3}" fill="none" stroke="${STROKE}" stroke-width="1.2" stroke-dasharray="3,2"/>
+    <line x1="${cx}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="${STROKE}" stroke-width="1.5"/>
+    <text x="${cx + r / 2}" y="${cy - 8}" text-anchor="middle" font-size="13" fill="${TEXT}">r = ${fmtNum(spec.radius)}${unit}</text>
+  `)
+}
+
+// ── Template generik lintas mapel ────────────────────────────────────────
+const PALETTE = ['#93c5fd', '#86efac', '#fde047', '#f9a8d4', '#c4b5fd', '#fdba74']
+
+function concentricDimensions(spec: Extract<IllustrationSpec, { type: 'concentric' }>): { width: number; height: number } {
+  const legendH = Math.max(spec.layers.length, 1) * 18 + 16
+  return { width: WIDTH, height: Math.max(190, legendH + 60) }
+}
+
+function renderConcentric(spec: Extract<IllustrationSpec, { type: 'concentric' }>): string {
+  const { height } = concentricDimensions(spec)
+  const n = Math.max(spec.layers.length, 1)
+  const cx = 105, cy = height / 2
+  const maxR = Math.min(cx - 15, cy - 15)
+
+  const rings = spec.layers.map((_, i) => maxR * (i + 1) / n)
+  const circles = spec.layers.map((_, i) => {
+    const idx = n - 1 - i // gambar dari terluar ke terdalam
+    const r = rings[idx]
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${PALETTE[idx % PALETTE.length]}" stroke="${STROKE}" stroke-width="1"/>`
+  }).join('')
+
+  const points = (spec.points ?? []).map((p) => {
+    const layerCount = (spec.points ?? []).filter((q) => q.layerIndex === p.layerIndex).length
+    const indexInLayer = (spec.points ?? []).filter((q) => q.layerIndex === p.layerIndex).indexOf(p)
+    const r = rings[Math.min(Math.max(p.layerIndex, 0), n - 1)] ?? maxR
+    const angle = (2 * Math.PI * indexInLayer) / Math.max(layerCount, 1) - Math.PI / 2
+    const px = cx + r * Math.cos(angle), py = cy + r * Math.sin(angle)
+    const label = p.label ? escapeXml(p.label) : ''
+    return `<circle cx="${px}" cy="${py}" r="4" fill="#dc2626" stroke="#ffffff" stroke-width="1"/>` +
+      (label ? `<text x="${px}" y="${py - 8}" text-anchor="middle" font-size="10" font-weight="700" fill="#dc2626">${label}</text>` : '')
+  }).join('')
+
+  const legendX = cx + maxR + 30
+  const legendY0 = cy - ((n - 1) * 18) / 2
+  const legend = spec.layers.map((layer, i) => {
+    const y = legendY0 + i * 18
+    return `
+      <rect x="${legendX}" y="${y - 9}" width="11" height="11" fill="${PALETTE[i % PALETTE.length]}" stroke="${STROKE}" stroke-width="1"/>
+      <text x="${legendX + 16}" y="${y}" font-size="11" fill="${TEXT}">${escapeXml(layer.label)}</text>
+    `
+  }).join('')
+
+  return svgWrap(`${circles}${points}${legend}`, WIDTH, height)
+}
+
+function chainLayout(spec: Extract<IllustrationSpec, { type: 'chain' }>) {
+  const n = spec.nodes.length
+  const edges = spec.bonds && spec.bonds.length > 0 ? spec.bonds : spec.nodes.slice(0, -1).map((_, i) => ({ from: i, to: i + 1 }))
+  const degree = new Array(n).fill(0)
+  edges.forEach((e) => { if (degree[e.from] !== undefined) degree[e.from]++; if (degree[e.to] !== undefined) degree[e.to]++ })
+  let hub = -1, maxDeg = 0
+  degree.forEach((d, i) => { if (d > maxDeg) { maxDeg = d; hub = i } })
+
+  const cx = WIDTH / 2, cy = HEIGHT / 2
+  const positions: { x: number; y: number }[] = new Array(n)
+  if (maxDeg >= 3 && hub >= 0) {
+    positions[hub] = { x: cx, y: cy }
+    const others = [...Array(n).keys()].filter((i) => i !== hub)
+    const R = 85
+    others.forEach((idx, k) => {
+      const angle = (2 * Math.PI * k) / others.length - Math.PI / 2
+      positions[idx] = { x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle) }
+    })
+  } else {
+    const gap = n > 1 ? (WIDTH - 80) / (n - 1) : 0
+    spec.nodes.forEach((_, i) => { positions[i] = { x: 40 + gap * i, y: cy } })
+  }
+  return { positions, edges }
+}
+
+function renderChain(spec: Extract<IllustrationSpec, { type: 'chain' }>): string {
+  const { positions, edges } = chainLayout(spec)
+  const bonds = edges.map((e) => {
+    const a = positions[e.from], b = positions[e.to]
+    if (!a || !b) return ''
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${STROKE}" stroke-width="2"/>`
+  }).join('')
+  const nodes = spec.nodes.map((node, i) => {
+    const p = positions[i]
+    if (!p) return ''
+    return `
+      <circle cx="${p.x}" cy="${p.y}" r="22" fill="${PALETTE[i % PALETTE.length]}" stroke="${STROKE}" stroke-width="1.5"/>
+      <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="13" font-weight="700" fill="${TEXT}">${escapeXml(node.label)}</text>
+    `
+  }).join('')
+  return svgWrap(`${bonds}${nodes}`)
+}
+
+function labeledBoxesDimensions(spec: Extract<IllustrationSpec, { type: 'labeled_boxes' }>): { width: number; height: number } {
+  const n = Math.max(spec.items.length, 1)
+  if (spec.flow) return { width: Math.max(280, n * 95 - 20), height: 130 }
+  const cols = Math.min(3, n)
+  const rows = Math.ceil(n / cols)
+  return { width: 320, height: Math.max(130, rows * 68 + 30) }
+}
+
+function renderLabeledBoxes(spec: Extract<IllustrationSpec, { type: 'labeled_boxes' }>): string {
+  const { width, height } = labeledBoxesDimensions(spec)
+  const items = spec.items.slice(0, 12)
+
+  if (spec.flow) {
+    const boxW = 72, boxH = 48, gap = 23
+    const y = (height - boxH) / 2
+    const boxes = items.map((label, i) => {
+      const x = 20 + i * (boxW + gap)
+      const arrow = i < items.length - 1
+        ? `<line x1="${x + boxW}" y1="${y + boxH / 2}" x2="${x + boxW + gap - 4}" y2="${y + boxH / 2}" stroke="${STROKE}" stroke-width="1.5" marker-end="url(#flowArrow)"/>`
+        : ''
+      return `
+        <rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" rx="6" fill="${PALETTE[i % PALETTE.length]}" stroke="${STROKE}" stroke-width="1.5"/>
+        <text x="${x + boxW / 2}" y="${y + boxH / 2 + 4}" text-anchor="middle" font-size="10.5" fill="${TEXT}">${escapeXml(label)}</text>
+        ${arrow}
+      `
+    }).join('')
+    return svgWrap(`
+      <defs><marker id="flowArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="${STROKE}"/></marker></defs>
+      ${boxes}
+    `, width, height)
+  }
+
+  const cols = Math.min(3, items.length || 1)
+  const boxW = (width - 40 - (cols - 1) * 10) / cols
+  const boxH = 50
+  const boxes = items.map((label, i) => {
+    const row = Math.floor(i / cols), col = i % cols
+    const x = 20 + col * (boxW + 10)
+    const y = 20 + row * (boxH + 15)
+    return `
+      <rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" rx="6" fill="${PALETTE[i % PALETTE.length]}" stroke="${STROKE}" stroke-width="1.5"/>
+      <text x="${x + boxW / 2}" y="${y + boxH / 2 + 4}" text-anchor="middle" font-size="10.5" fill="${TEXT}">${escapeXml(label)}</text>
+    `
+  }).join('')
+  return svgWrap(boxes, width, height)
+}
+
 export function illustrationSvg(spec: IllustrationSpec): string {
   switch (spec.type) {
     case 'triangle': return renderTriangle(spec)
@@ -292,11 +579,21 @@ export function illustrationSvg(spec: IllustrationSpec): string {
     case 'number_line': return renderNumberLine(spec)
     case 'bar_chart': return renderBarChart(spec)
     case 'long_division': return renderLongDivision(spec)
+    case 'cube': return renderCube(spec)
+    case 'cuboid': return renderCuboid(spec)
+    case 'cylinder': return renderCylinder(spec)
+    case 'cone': return renderCone(spec)
+    case 'sphere': return renderSphere(spec)
+    case 'concentric': return renderConcentric(spec)
+    case 'chain': return renderChain(spec)
+    case 'labeled_boxes': return renderLabeledBoxes(spec)
   }
 }
 
 export function illustrationDimensions(spec: IllustrationSpec): { width: number; height: number } {
   if (spec.type === 'long_division') return longDivisionDimensions(spec)
+  if (spec.type === 'concentric') return concentricDimensions(spec)
+  if (spec.type === 'labeled_boxes') return labeledBoxesDimensions(spec)
   return { width: WIDTH, height: HEIGHT }
 }
 
