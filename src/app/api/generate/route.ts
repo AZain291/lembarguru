@@ -70,7 +70,7 @@ const NOTASI_RULES = `
 - Notasi matematika, kimia, dan rumus sains WAJIB pakai karakter Unicode yang benar, bukan notasi ASCII kasar:
   * Pangkat/eksponen: pakai karakter superscript asli, misal x² (bukan x^2 atau x2), 10³ (bukan 10^3), a⁻¹ (bukan a^-1). Karakter yang tersedia: ⁰¹²³⁴⁵⁶⁷⁸⁹ ⁺⁻⁼⁽⁾ ⁿ ⁱ.
   * Rumus kimia (indeks jumlah atom): pakai karakter subscript asli, misal H₂O, CO₂, H₂SO₄ (bukan H2O, CO2, H2SO4). Karakter yang tersedia: ₀₁₂₃₄₅₆₇₈₉ ₊₋₌₍₎.
-  * Simbol matematika lain: × untuk perkalian (bukan x atau *), ÷ untuk pembagian, √ untuk akar, π, ° (derajat), ≤ ≥ ≠ ≈ ∞ ∑ ∆, dan pecahan ditulis dengan "/" biasa (mis. 3/4) kecuali ada karakter Unicode pecahan yang pas (½ ¼ ¾).
+  * Simbol matematika lain: × untuk perkalian (bukan x atau *), ÷ untuk pembagian, √ untuk akar, π, ° (derajat), ≤ ≥ ≠ ≈ ∞ ∑ ∆, dan pecahan ditulis dengan bersusun (stack atau vertikal) menggunakan format matematika atau LaTeX \frac{pembilang}{penyebut} kecuali ada karakter Unicode pecahan yang pas (½ ¼ ¾).
   * Kalau pangkat/indeks tidak punya karakter Unicode yang persis (misal pangkat berupa variabel atau ekspresi panjang seperti (2n+1)), tulis sedekat mungkin ke notasi baku tanpa tanda "^" atau "_" mentah -- contoh: tulis "pangkat (2n+1)" atau gunakan huruf superscript yang tersedia (ⁿ, ˣ, dst) kalau ada.
 - Hitung dan verifikasi jawaban (terutama soal hitungan/angka) di dalam kepala SEBELUM menulis apa pun untuk soal itu. JANGAN tampilkan proses berpikir ulang atau koreksi di dalam output (contoh yang DILARANG: "namun jika...", "mari koreksi", "sebenarnya jawaban yang benar adalah..."). Setiap bagian -- opsi jawaban, "Jawaban:", "Pembahasan:" -- HANYA ditulis SATU KALI per soal, langsung versi final yang sudah benar.
 ${ILLUSTRATION_RULES}`
