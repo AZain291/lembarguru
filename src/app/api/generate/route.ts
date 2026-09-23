@@ -26,6 +26,41 @@ interface BaseParams {
   kurikulum: string; fase: string | null
 }
 
+// Sumber topik alternatif (Pro/Guru saja, dicek di POST di bawah) -- lihat
+// SourceFile di LembarGuruApp.tsx. Gambar/PDF dikirim base64 dan dibaca
+// langsung oleh Claude (vision/document), file teks cukup digabung jadi
+// teks referensi di dalam prompt.
+interface SourceFile {
+  kind: 'image' | 'pdf' | 'text'
+  name?: string
+  mediaType?: string
+  data: string
+}
+const MAX_IMAGE_B64_LEN = 6_000_000 // ~4.3MB setelah decode base64
+const MAX_PDF_B64_LEN = 6_000_000
+const MAX_TEXT_CHARS = 1_500_000
+
+// PDF document content block belum ada di tipe MessageParam SDK versi ini
+// (@anthropic-ai/sdk 0.27.3, terbit sebelum API "document" block di-GA-kan
+// untuk model non-beta) -- API-nya sendiri sudah menerima bentuk ini apa
+// adanya, jadi di-cast lewat unknown di sini alih-alih menunggu upgrade SDK.
+function buildUserContent(promptText: string, sourceFile: SourceFile | null): Anthropic.MessageParam['content'] {
+  if (!sourceFile) return promptText
+
+  if (sourceFile.kind === 'text') {
+    return `${promptText}\n\nMateri referensi dari file yang diunggah guru (jadikan sumber utama topik & isi soal, tetap ikuti format & tipe soal yang diminta):\n"""\n${sourceFile.data}\n"""`
+  }
+
+  const fileBlock = sourceFile.kind === 'image'
+    ? { type: 'image', source: { type: 'base64', media_type: sourceFile.mediaType || 'image/png', data: sourceFile.data } }
+    : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: sourceFile.data } }
+
+  return [
+    fileBlock,
+    { type: 'text', text: `${promptText}\n\nGunakan gambar/dokumen yang dilampirkan di atas sebagai sumber utama topik & isi soal.` },
+  ] as unknown as Anthropic.MessageParam['content']
+}
+
 function buildBaseInfo({ mapel, kelas, topik, difficulty, kurikulum, fase }: BaseParams): string {
   const kurikulumNote = kurikulum === 'Kurikulum Merdeka'
     ? `Fase: ${fase}. Sesuaikan dengan CP dan TP Kurikulum Merdeka.`
@@ -198,11 +233,11 @@ function tokensFor(count: number, essayHeavy: boolean): number {
   return Math.min(16000, Math.max(2048, Math.round(count * (essayHeavy ? 900 : 600))))
 }
 
-async function callModel(model: string, prompt: string, maxTokens: number): Promise<{ text: string; tokens: number }> {
+async function callModel(model: string, content: Anthropic.MessageParam['content'], maxTokens: number): Promise<{ text: string; tokens: number }> {
   const message = await client.messages.create({
     model,
     max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user', content }],
   })
   const text = message.content[0]?.type === 'text' ? message.content[0].text : ''
   const tokens = (message.usage?.input_tokens ?? 0) + (message.usage?.output_tokens ?? 0)
@@ -226,10 +261,34 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { mapel, kelas, topik, jumlahSoal, tipe, difficulty, kurikulum, fase, mixedConfig } = body
+    const { mapel, kelas, topik, jumlahSoal, tipe, difficulty, kurikulum, fase, mixedConfig, sourceFile } = body
 
     if (!mapel || !kelas || !jumlahSoal) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
+    }
+
+    // Sumber topik dari file upload -- fitur Pro/Guru saja. Tier dicek lagi
+    // di server (bukan cuma UI) karena vision/document jauh lebih mahal per
+    // panggilan dibanding prompt teks biasa.
+    let validatedSourceFile: SourceFile | null = null
+    if (sourceFile) {
+      if (identity.type !== 'pro' && identity.type !== 'guru') {
+        return NextResponse.json({ error: 'fitur_pro', tier: identity.type }, { status: 403 })
+      }
+      const kind = sourceFile.kind
+      const data = typeof sourceFile.data === 'string' ? sourceFile.data : ''
+      if ((kind !== 'image' && kind !== 'pdf' && kind !== 'text') || !data) {
+        return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 })
+      }
+      const maxLen = kind === 'text' ? MAX_TEXT_CHARS : kind === 'image' ? MAX_IMAGE_B64_LEN : MAX_PDF_B64_LEN
+      if (data.length > maxLen) {
+        return NextResponse.json({ error: 'file_terlalu_besar' }, { status: 400 })
+      }
+      validatedSourceFile = {
+        kind, data,
+        name: typeof sourceFile.name === 'string' ? sourceFile.name : undefined,
+        mediaType: typeof sourceFile.mediaType === 'string' ? sourceFile.mediaType : undefined,
+      }
     }
 
     const totalSoal = tipe === 'campuran' && mixedConfig
@@ -267,11 +326,13 @@ export async function POST(request: NextRequest) {
       // ke Sonnet. Salah satu grup di-skip kalau count-nya 0.
       const jobs: Promise<{ text: string; tokens: number }>[] = []
       if (pgCount > 0) {
-        jobs.push(callModel(MODEL_HAIKU, buildMixedPrompt({ pilihan_ganda: pgCount }, baseParams), tokensFor(pgCount, false)))
+        const content = buildUserContent(buildMixedPrompt({ pilihan_ganda: pgCount }, baseParams), validatedSourceFile)
+        jobs.push(callModel(MODEL_HAIKU, content, tokensFor(pgCount, false)))
       }
       if (restCount > 0) {
         const { pilihan_ganda: _pg, ...restConfig } = config
-        jobs.push(callModel(MODEL_SONNET, buildMixedPrompt(restConfig, baseParams), tokensFor(restCount, restHasEssayOrHots)))
+        const content = buildUserContent(buildMixedPrompt(restConfig, baseParams), validatedSourceFile)
+        jobs.push(callModel(MODEL_SONNET, content, tokensFor(restCount, restHasEssayOrHots)))
       }
 
       const results = await Promise.all(jobs)
@@ -281,7 +342,8 @@ export async function POST(request: NextRequest) {
       const model = tipe === 'Pilihan Ganda' ? MODEL_HAIKU : MODEL_SONNET
       const isEssayHeavy = ['Esai / Uraian', 'HOTS (Pro)'].includes(tipe)
       const prompt = buildSinglePrompt(tipe, totalSoal, baseParams)
-      const result = await callModel(model, prompt, tokensFor(totalSoal, isEssayHeavy))
+      const content = buildUserContent(prompt, validatedSourceFile)
+      const result = await callModel(model, content, tokensFor(totalSoal, isEssayHeavy))
       hasil = result.text
       totalTokens = result.tokens
     }

@@ -34,6 +34,16 @@ interface MixedConfig {
   isian: number;
   hots: number;
 }
+// Sumber topik alternatif (Pro/Guru): gambar & PDF dikirim base64 ke
+// /api/generate lalu dibaca langsung oleh Claude (vision/document), file
+// teks cukup dibaca client-side dan digabung sebagai teks referensi.
+type SourceFileKind = "image" | "pdf" | "text";
+interface SourceFile {
+  kind: SourceFileKind;
+  name: string;
+  mediaType?: string; // mime asli, cuma dipakai untuk kind "image"
+  data: string;        // base64 (image/pdf) atau teks polos (text)
+}
 interface ResultData {
   questions: Question[];
   mapel: string;
@@ -241,6 +251,9 @@ export default function LembarGuruApp() {
   const [fase, setFase] = useState("Fase C (Kelas 5-6)");
   const [topik, setTopik] = useState("");
   const [tema, setTema] = useState("");
+  const [sourceFile, setSourceFile] = useState<SourceFile | null>(null);
+  const [sourceFileError, setSourceFileError] = useState("");
+  const sourceFileInputRef = useRef<HTMLInputElement>(null);
   const [difficulty, setDifficulty] = useState("Campuran");
   const [qtype, setQtype] = useState("pilihan_ganda");
 
@@ -413,6 +426,54 @@ export default function LembarGuruApp() {
     toastRef.current = setTimeout(() => setToast(null), 2800);
   };
 
+  // Batas ukuran raw file -- base64 nambah ~33% ukuran, dan endpoint
+  // serverless Vercel punya limit body request ~4.5MB, jadi dijaga jauh
+  // di bawah itu.
+  const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+  const MAX_PDF_BYTES = 4 * 1024 * 1024;
+  const MAX_TEXT_BYTES = 1 * 1024 * 1024;
+
+  async function handleSourceFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // supaya file yang sama bisa dipilih ulang
+    if (!file) return;
+    if (!isPro) { setModal("upgrade"); return; }
+    setSourceFileError("");
+
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+    const isText = file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
+
+    if (!isImage && !isPdf && !isText) {
+      setSourceFileError("Format tidak didukung. Gunakan gambar (JPG/PNG/WEBP), PDF, atau teks (.txt).");
+      return;
+    }
+    const maxBytes = isImage ? MAX_IMAGE_BYTES : isPdf ? MAX_PDF_BYTES : MAX_TEXT_BYTES;
+    if (file.size > maxBytes) {
+      setSourceFileError(`Ukuran file maksimal ${Math.round(maxBytes / 1024 / 1024)}MB.`);
+      return;
+    }
+
+    try {
+      if (isText) {
+        const text = await file.text();
+        setSourceFile({ kind: "text", name: file.name, data: text });
+      } else {
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        const base64 = dataUrl.split(",")[1] ?? "";
+        setSourceFile({ kind: isImage ? "image" : "pdf", name: file.name, mediaType: file.type, data: base64 });
+      }
+      setTopik(""); // file menggantikan topik manual, bukan digabung
+    } catch {
+      setSourceFileError("Gagal membaca file. Coba lagi.");
+    }
+  }
+
   async function generateSoal() {
     if (remaining !== null && remaining <= 0) { setModal("limit"); return; }
     if (isMixed && totalMixedQ === 0) { setError("Isi minimal 1 soal di konfigurasi campuran."); return; }
@@ -420,7 +481,10 @@ export default function LembarGuruApp() {
 
     setLoading(true); setResult(null); setError(""); setShowAnswerKey(false);
 
-    const finalTopik = tema ? (topik ? `Tema: ${tema} — ${topik}` : `Tema: ${tema}`) : topik;
+    const activeSourceFile = isPro ? sourceFile : null;
+    const finalTopik = activeSourceFile
+      ? `(dari file: ${activeSourceFile.name})`
+      : tema ? (topik ? `Tema: ${tema} — ${topik}` : `Tema: ${tema}`) : topik;
 
     // "PG + Essay" bukan tipe soal tersendiri di backend -- diteruskan
     // sebagai mode campuran (tipe:"campuran") dengan mixedConfig cuma
@@ -443,6 +507,7 @@ export default function LembarGuruApp() {
           tipe: sendAsCampuran ? "campuran" : TYPES.find(t => t.v === qtype)?.l,
           jumlahSoal: limitedNumQ,
           mixedConfig: effectiveMixedConfig,
+          sourceFile: activeSourceFile,
         }),
       });
 
@@ -900,7 +965,46 @@ export default function LembarGuruApp() {
                 <label style={{ fontSize:12, fontWeight:600, color:C.textSecondary, display:"block", marginBottom:5 }}>
                   Topik Spesifik <span style={{ fontWeight:400, color:C.textMuted }}>(opsional)</span>
                 </label>
-                <input type="text" placeholder="cth: Sistem Pernapasan, Pecahan Desimal…" value={topik} onChange={e => setTopik(e.target.value)} style={ss} />
+                <input type="text" placeholder="cth: Sistem Pernapasan, Pecahan Desimal…" value={topik} onChange={e => setTopik(e.target.value)} disabled={!!sourceFile} style={{ ...ss, ...(sourceFile ? { opacity:0.55, cursor:"not-allowed" } : {}) }} />
+
+                <input
+                  ref={sourceFileInputRef}
+                  type="file"
+                  accept="image/*,.pdf,.txt,text/plain"
+                  onChange={handleSourceFileSelect}
+                  style={{ display:"none" }}
+                />
+
+                {!sourceFile ? (
+                  <button
+                    type="button"
+                    onClick={() => { if (!isPro) { setModal("upgrade"); return; } sourceFileInputRef.current?.click(); }}
+                    title={isPro ? "Unggah gambar, PDF, atau teks sebagai sumber topik" : "Fitur Pro/Guru — upgrade untuk unggah file"}
+                    style={{
+                      marginTop:8, display:"inline-flex", alignItems:"center", gap:6,
+                      border: isPro ? `1.5px dashed ${C.inputBorder}` : "1.5px dashed #d97706",
+                      background: isPro ? C.inputBg : "rgba(217,119,6,0.06)",
+                      color: isPro ? C.textSecondary : "#d97706",
+                      borderRadius:8, padding:"7px 12px", fontSize:12, fontWeight:600, cursor:"pointer",
+                    }}
+                  >
+                    📎 Unggah gambar / PDF / teks sebagai sumber topik
+                    {!isPro && <span style={{ fontSize:9, background:"#fde68a", color:"#92400e", padding:"1px 5px", borderRadius:3, fontWeight:700 }}>PRO</span>}
+                  </button>
+                ) : (
+                  <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:8, border:`1.5px solid ${C.accent}`, background:C.accentBg, borderRadius:8, padding:"7px 12px" }}>
+                    <span style={{ fontSize:12, color:C.accentText, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>
+                      {sourceFile.kind === "image" ? "🖼️" : sourceFile.kind === "pdf" ? "📄" : "📝"} {sourceFile.name}
+                    </span>
+                    <button type="button" onClick={() => setSourceFile(null)} title="Hapus file" style={{ border:"none", background:"transparent", cursor:"pointer", color:C.textMuted, fontSize:14, fontWeight:700, lineHeight:1 }}>✕</button>
+                  </div>
+                )}
+                {sourceFileError && <div style={{ marginTop:6, fontSize:11, color:"#dc2626" }}>{sourceFileError}</div>}
+                {!isPro && !sourceFileError && (
+                  <div style={{ marginTop:6, fontSize:11, color:C.textMuted }}>
+                    Unggah gambar, PDF, atau teks sebagai sumber topik soal — fitur Pro/Guru.
+                  </div>
+                )}
               </div>
 
               {/* Tipe soal */}
